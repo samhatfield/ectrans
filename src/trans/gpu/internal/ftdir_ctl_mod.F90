@@ -1,5 +1,5 @@
 ! (C) Copyright 2000- ECMWF.
-! (C) Copyright 2000- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -11,9 +11,9 @@
 MODULE FTDIR_CTL_MOD
 CONTAINS
 SUBROUTINE FTDIR_CTL(KF_UV_G,KF_SCALARS_G,KF_GP,KF_FS, &
- &                   KVSETUV,KVSETSC,KPTRGP,&
- &                   KVSETSC3A,KVSETSC3B,KVSETSC2,&
- &                   PGP,PGPUV,PGP3A,PGP3B,PGP2)
+ & KVSETUV,KVSETSC,KPTRGP,&
+ & KVSETSC3A,KVSETSC3B,KVSETSC2,&
+ & PGP,PGPUV,PGP3A,PGP3B,PGP2)
 
 
 !**** *FTDIR_CTL - Direct Fourier transform control
@@ -55,9 +55,9 @@ SUBROUTINE FTDIR_CTL(KF_UV_G,KF_SCALARS_G,KF_GP,KF_FS, &
 
 !     ------------------------------------------------------------------
 
-USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRB,  JPRBT
+USE PARKIND_ECTRANS  ,ONLY : JPIM     ,JPRB,  JPRBT
 
-USE TPM_GEN         ,ONLY : NOUT
+USE TPM_GEN, only: nout
 !USE TPM_DIM
 !USE TPM_GEOMETRY
 USE TPM_TRANS       ,ONLY : ZGTF, FOUBUF_IN
@@ -202,6 +202,7 @@ ELSE
   IINC=-1
 ENDIF
 
+!write(301,*) 'sizey: ', myproc, size(zgtf,1), KF_FS
 
 CALL GSTATS(1640,0)
 !!$OMP PARALLEL DO SCHEDULE(DYNAMIC,1) PRIVATE(JGL,IGL)
@@ -217,7 +218,7 @@ IF(KF_FS>0) THEN
     IOFF=1
     !ICHUNK=2*KF_FS+2
     ICHUNK=ISIZE
-    CALL FTDIR(ICHUNK)
+    CALL FTDIR(ICHUNK,KF_FS)
   !ENDDO
 ENDIF
 

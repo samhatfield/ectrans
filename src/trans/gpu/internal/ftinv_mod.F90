@@ -1,5 +1,5 @@
 ! (C) Copyright 2000- ECMWF.
-! (C) Copyright 2000- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -44,12 +44,15 @@ SUBROUTINE FTINV(PREEL,KFIELDS)
 !        G. Mozdzynski (Jun 2015): Support alternative FFTs to FFTW
 !     ------------------------------------------------------------------
 
-USE PARKIND_ECTRANS ,ONLY : JPIM, JPRBT
+USE PARKIND_ECTRANS  ,ONLY : JPIM, JPRBT
 
 USE TPM_DISTR       ,ONLY : D, MYSETW,  MYPROC, NPROC
 USE TPM_GEOMETRY    ,ONLY : G
-USE TPM_GEN         ,ONLY : NOUT
+use tpm_gen, only: nout
 USE TPM_FFT         ,ONLY : T
+#ifdef WITH_FFTW
+USE TPM_FFTW        ,ONLY : TW, EXEC_FFTW
+#endif
 USE TPM_FFTC        ,ONLY : CREATE_PLAN_FFT, destroy_plan_fft
 USE TPM_DIM         ,ONLY : R
 USE CUDA_DEVICE_MOD
@@ -98,7 +101,7 @@ DO KGL=IBEG,IEND,IINC
   IST1=1
   IF (G%NLOEN(IGLG)==1) IST1=0
 
-  !$ACC LOOP COLLAPSE(2)
+  !$ACC loop collapse(2)
   DO JJ=IST1,ILEN
      DO JF=1,KFIELDS
         PREEL(JF,IST+IOFF+JJ-1) = 0.0_JPRBT
@@ -106,11 +109,13 @@ DO KGL=IBEG,IEND,IINC
   ENDDO
 
 END DO
-!$ACC END DATA
+!$ACC end data
 
-ALLOCATE(PREEL2(SIZE(PREEL,1),SIZE(PREEL,2)))
-!$ACC DATA CREATE(PREEL2) PRESENT(PREEL)
+allocate(preel2(size(preel,1),size(preel,2)))
+!$acc data create(preel2) present(preel)
 
+!istat = cuda_GetDevice(idev)
+!istat = cuda_Synchronize()      
 !!$OMP PARALLEL DO SCHEDULE(DYNAMIC,1) PRIVATE(istat,KGL,IOFF,IGLG,IPLAN_C2R)
 DO KGL=IBEG,IEND,IINC
   IOFF=D%NSTAGTF(KGL)+1
@@ -118,21 +123,21 @@ DO KGL=IBEG,IEND,IINC
   !IF (G%NLOEN(IGLG)>1) THEN
 !call cudaProfilerStop()
      !istat=cuda_SetDevice(idev)
-     CALL CREATE_PLAN_FFT(IPLAN_C2R,1,G%NLOEN(IGLG),KFIELDS)
-     !$ACC HOST_DATA USE_DEVICE(PREEL,PREEL2)
+     CALL CREATE_PLAN_FFT(IPLAN_C2R,1,G%NLOEN(IGLG),KFIELDS,KFIELDS)
+     !$ACC host_data use_device(PREEL,PREEL2)
      CALL EXECUTE_PLAN_FFTC(IPLAN_C2R,1,PREEL(1, ioff),PREEL2(1, ioff))
-     !$ACC END HOST_DATA
+     !$ACC end host_data
 !call cudaProfilerStart()
   !ENDIF
 END DO
 !!$OMP END PARALLEL DO
-ISTAT = CUDA_SYNCHRONIZE()      
+istat = cuda_Synchronize()      
 
 
-!$ACC KERNELS
-PREEL(:,:) = PREEL2(:,:)
-!$ACC END KERNELS
-!$ACC END DATA
+!$acc kernels
+preel(:,:) = preel2(:,:)
+!$acc end kernels
+!$acc end data
 !     ------------------------------------------------------------------
 
 END SUBROUTINE FTINV
