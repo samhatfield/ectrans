@@ -1,5 +1,5 @@
 ! (C) Copyright 1995- ECMWF.
-! (C) Copyright 1995- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -12,44 +12,44 @@ MODULE TRGTOL_MOD
   CONTAINS
   SUBROUTINE TRGTOL_CUDAAWARE(PGLAT,KF_FS,KF_GP,KF_SCALARS_G,KVSET,KPTRGP,&
    &PGP,PGPUV,PGP3A,PGP3B,PGP2)
-  
+
   !**** *TRGTOL * - transposition of grid point data from column
   !                 structure to latitudinal. Reorganize data between
   !                 grid point calculations and direct Fourier Transform
-  
+
   ! Version using CUDA-aware MPI
 
   !     Purpose.
   !     --------
-  
-  
+
+
   !**   Interface.
   !     ----------
   !        *call* *trgtol(...)
-  
+
   !        Explicit arguments :
   !        --------------------
   !           PGLAT    -  Latitudinal data ready for direct FFT (output)
   !           PGP    -  Blocked grid point data    (input)
-  
+
   !        Implicit arguments :
   !        --------------------
-  
+
   !     Method.
   !     -------
   !        See documentation
-  
+
   !     Externals.
   !     ----------
-  
+
   !     Reference.
   !     ----------
   !        ECMWF Research Department documentation of the IFS
-  
+
   !     Author.
   !     -------
   !        MPP Group *ECMWF*
-  
+
   !     Modifications.
   !     --------------
   !        Original: 95-10-01
@@ -68,31 +68,23 @@ MODULE TRGTOL_MOD
   !         08-01-01  G.Mozdzynski: cleanup
   !         09-01-02  G.Mozdzynski: use non-blocking recv and send
   !     ------------------------------------------------------------------
-  
-  
-  
-  USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRB,  JPRBT
-  USE YOMHOOK         ,ONLY : LHOOK,   DR_HOOK, JPHOOK
-  
-  USE MPL_MODULE      ,ONLY : MPL_RECV, MPL_SEND, MPL_WAIT, JP_NON_BLOCKING_STANDARD, MPL_BARRIER
-  
-  USE TPM_GEN         ,ONLY : NOUT, LSYNC_TRANS
-  USE TPM_DISTR       ,ONLY : D, NPRCIDS, NPRTRNS, MTAGGL,NPRTRW,NPRTRV, &
-       &                      MYSETV, MYSETW, MYPROC, NPROC
+
+
+
+  USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRB ,  JPRBT
+  USE YOMHOOK         ,ONLY : LHOOK,   DR_HOOK,  JPHOOK
+  USE MPL_MODULE      ,ONLY : MPL_WAIT, MPL_BARRIER
+  USE TPM_GEN         ,ONLY : LSYNC_TRANS
   USE EQ_REGIONS_MOD  ,ONLY : MY_REGION_EW, MY_REGION_NS
-  USE TPM_TRANS       ,ONLY : NGPBLKS, NPROMA
-  
+  USE TPM_DISTR       ,ONLY : D,MYSETV, MYSETW, MTAGLG,NPRCIDS,MYPROC,NPROC,NPRTRW,NPRTRV
+  USE TPM_TRANS       ,ONLY : LDIVGP, LSCDERS, LUVDER, LVORGP, NGPBLKS, NPROMA
   USE PE2SET_MOD      ,ONLY : PE2SET
-  !USE MYSENDSET_MOD
   USE MPL_DATA_MODULE ,ONLY : MPL_COMM_OML
   USE OML_MOD         ,ONLY : OML_MY_THREAD
-  !USE MYRECVSET_MOD
-  USE ABORT_TRANS_MOD ,ONLY : ABORT_TRANS
-  !
   USE MPI
-  
+
   IMPLICIT NONE
-  
+
   REAL(KIND=JPRBT),INTENT(OUT)   :: PGLAT(:,:)
   INTEGER(KIND=JPIM),INTENT(IN) :: KVSET(:)
   INTEGER(KIND=JPIM),INTENT(IN) :: KF_FS,KF_GP
@@ -103,24 +95,26 @@ MODULE TRGTOL_MOD
   REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP3A(:,:,:,:)
   REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP3B(:,:,:,:)
   REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP2(:,:,:)
-  
+
+  ! LOCAL VARIABLES
+
+  !     LOCAL INTEGER SCALARS
   REAL(KIND=JPRBT),ALLOCATABLE :: ZCOMBUFS(:),ZCOMBUFR(:)
-  
+
   INTEGER(KIND=JPIM) :: ISENDTOT (NPROC)
   INTEGER(KIND=JPIM) :: IRECVTOT (NPROC)
   INTEGER(KIND=JPIM) :: IREQ     (NPROC*2)
   INTEGER(KIND=JPIM) :: IRECV_TO_PROC(NPROC)
   INTEGER(KIND=JPIM) :: ISEND_TO_PROC(NPROC)
-  
-  !     LOCAL INTEGER SCALARS
-  INTEGER(KIND=JPIM) :: IFIRST, IFIRSTLAT, IGL, IGLL, ILAST,&
+
+  INTEGER(KIND=JPIM) :: IFIRSTLAT, IGL, IGLL, ILAST,&
                &ILASTLAT, ILEN, JROC, IPOS, ISETA, &
                &ISETB, IRECV, &
                &ISETV, ISEND, JBLK, JFLD, &
                &JGL, JI, JK, JL, ISETW,  IFLD, &
                &II,IBUFLENR,IRECV_COUNTS, IPROC,IFLDS, &
                &ISEND_COUNTS,INS,INR,IR, JKL, PBOUND, IERROR, ILOCAL_LAT
-  
+
   INTEGER(KIND=JPIM) :: IOFF, ILAT_STRIP
   INTEGER(KIND=JPIM) :: IRECV_BUFR_TO_OUT(D%NLENGTF),IRECV_BUFR_TO_OUT_OFFSET(NPROC), IRECV_BUFR_TO_OUT_V
   INTEGER(KIND=JPIM) :: ISEND_FIELD_COUNT(NPRTRV),ISEND_FIELD_COUNT_V
@@ -129,9 +123,10 @@ MODULE TRGTOL_MOD
   INTEGER(KIND=JPIM), ALLOCATABLE :: ICOMBUFS_OFFSET(:),ICOMBUFR_OFFSET(:)
   INTEGER(KIND=JPIM) :: ICOMBUFS_OFFSET_V, ICOMBUFR_OFFSET_V
   INTEGER(KIND=JPIM) :: IFLDA(KF_GP)
+
   REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
   REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR
-  
+
   INTEGER(JPIM), PARAMETER :: PGP_INDICES_UV = 1
   INTEGER(JPIM), PARAMETER :: PGP_INDICES_GP2 = 2
   INTEGER(JPIM), PARAMETER :: PGP_INDICES_GP3A = 3
@@ -146,12 +141,12 @@ MODULE TRGTOL_MOD
   #endif
 
   !     ------------------------------------------------------------------
-  
+
   !*       0.    Some initializations
   !              --------------------
-  
+
   IF (LHOOK) CALL DR_HOOK('TRGTOL_CUDAAWARE',0,ZHOOK_HANDLE)
-  
+
   CALL GSTATS(1805,0)
   IOFF=1
   PGP_INDICES(PGP_INDICES_UV) = IOFF
@@ -163,7 +158,7 @@ MODULE TRGTOL_MOD
   PGP_INDICES(PGP_INDICES_GP3B) = IOFF
   IF (PRESENT(PGP3B)) IOFF=IOFF+UBOUND(PGP3B,2)*UBOUND(PGP3B,3)
   PGP_INDICES(PGP_INDICES_END) = IOFF
-  
+
   ! Prepare sender arrays
   ! find number of fields on a certain V-set
   IF(NPRTRV == 1) THEN
@@ -192,7 +187,7 @@ MODULE TRGTOL_MOD
     ! total send size is # points per field * # fields
     ISENDTOT(JROC) = ISEND_WSET_SIZE(ISETW)*ISEND_FIELD_COUNT(ISETV)
   ENDDO
-  
+
   ! Prepare receiver arrays
   IRECV_BUFR_TO_OUT_OFFSET(:) = 0
   DO JROC=1,NPROC
@@ -211,33 +206,32 @@ MODULE TRGTOL_MOD
     IFIRSTLAT = MAX(D%NPTRLS(MYSETW),D%NFRSTLAT(ISETA))
     ! MIN(Index of last fourier latitude for this W set, last latitude of a senders A set)
     ILASTLAT  = MIN(D%NPTRLS(MYSETW)+D%NULTPP(MYSETW)-1,D%NLSTLAT(ISETA))
-  
+
     IPOS = 0
     DO JGL=IFIRSTLAT,ILASTLAT
       ! get from "actual" latitude to the latitude strip offset
       IGL  = JGL-D%NFRSTLAT(ISETA)+D%NPTRFRSTLAT(ISETA)
-        ! get from "actual" latitude to the latitude offset
-        IGLL = JGL-D%NPTRLS(MYSETW)+1
-        DO JL=1,D%NONL(IGL,ISETB)
-          IPOS = IPOS+1
-          ! indicates where the data has to be stored
+      ! get from "actual" latitude to the latitude offset
+      IGLL = JGL-D%NPTRLS(MYSETW)+1
+      DO JL=1,D%NONL(IGL,ISETB)
+        IPOS = IPOS+1
+        ! indicates where the data has to be stored
         IRECV_BUFR_TO_OUT(IRECV_BUFR_TO_OUT_OFFSET(JROC)+IPOS) = D%NSTA(IGL,ISETB)+D%NSTAGTF(IGLL)+JL-1
-        ENDDO
       ENDDO
+    ENDDO
     !we always receive the full fourier space
     IRECVTOT(JROC) = IPOS*KF_FS
   ENDDO
-  
+
   CALL GSTATS(1805,1)
- 
-  !$ACC DATA PRESENT(PGLAT) COPYIN(IRECV_BUFR_TO_OUT) &
-  !$ACC&     COPYIN(PGP_INDICES) ASYNC(1)
+
+  !$ACC DATA PRESENT(PGLAT) COPYIN(IRECV_BUFR_TO_OUT,PGP_INDICES) ASYNC(1)
   !$ACC DATA IF(PRESENT(PGP))   PRESENT(PGP)   ASYNC(1)
   !$ACC DATA IF(PRESENT(PGPUV)) PRESENT(PGPUV) ASYNC(1)
   !$ACC DATA IF(PRESENT(PGP2))  PRESENT(PGP2)  ASYNC(1)
   !$ACC DATA IF(PRESENT(PGP3A)) PRESENT(PGP3A) ASYNC(1)
   !$ACC DATA IF(PRESENT(PGP3B)) PRESENT(PGP3B) ASYNC(1)
-  
+
   ! TODO We should do the local contribution *WHILE* sending the data...
   ! Copy local contribution
   IF(ISENDTOT(MYPROC) > 0 )THEN
@@ -255,55 +249,54 @@ MODULE TRGTOL_MOD
         ENDIF
       ENDIF
     ENDDO
-  
+
     !$ACC DATA COPYIN(IFLDA(1:IFLDS)) ASYNC(1)
 
     ISEND_WSET_OFFSET_V = ISEND_WSET_OFFSET(MYSETW)
     ISEND_WSET_SIZE_V = ISEND_WSET_SIZE(MYSETW)
     IRECV_BUFR_TO_OUT_V = IRECV_BUFR_TO_OUT_OFFSET(MYPROC)
-  CALL GSTATS(1601,0)
-  IF(PRESENT(PGP)) THEN
+    CALL GSTATS(1601,0)
+    IF(PRESENT(PGP)) THEN
       !$ACC PARALLEL LOOP COLLAPSE(2) DEFAULT(NONE) PRIVATE(JK,JBLK,IFLD,IPOS,IOFF) ASYNC(1)
       DO JL=1,ISEND_WSET_SIZE_V
-      DO JFLD=1,KF_FS
+        DO JFLD=1,KF_FS
           JK = MOD(ISEND_WSET_OFFSET_V+JL-1,NPROMA)+1
           JBLK = (ISEND_WSET_OFFSET_V+JL-1)/NPROMA+1
           IFLD = IFLDA(JFLD)
           IPOS = IRECV_BUFR_TO_OUT_V+JL
           PGLAT(JFLD,IRECV_BUFR_TO_OUT(IPOS)) = PGP(JK,IFLD,JBLK)
+        ENDDO
       ENDDO
-    ENDDO
-  ELSE
+    ELSE
       !$ACC PARALLEL LOOP COLLAPSE(2) DEFAULT(NONE) PRIVATE(JK,JBLK,IFLD,IPOS,IOFF) ASYNC(1)
       DO JL=1,ISEND_WSET_SIZE_V
-      DO JFLD=1,KF_FS
+        DO JFLD=1,KF_FS
           JK = MOD(ISEND_WSET_OFFSET_V+JL-1,NPROMA)+1
           JBLK = (ISEND_WSET_OFFSET_V+JL-1)/NPROMA+1
-              IFLD = IFLDA(JFLD)
+          IFLD = IFLDA(JFLD)
           IPOS = IRECV_BUFR_TO_OUT(IRECV_BUFR_TO_OUT_V+JL)
-              IF(IFLD < PGP_INDICES(PGP_INDICES_UV+1)) THEN
-                IOFF=IFLD-PGP_INDICES(PGP_INDICES_UV)
-                PBOUND=UBOUND(PGPUV,2)
-                ! TODO we could certainly reshape PGPXX arrays and we would simplify this
+          IF(IFLD < PGP_INDICES(PGP_INDICES_UV+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_UV)
+            PBOUND=UBOUND(PGPUV,2)
             PGLAT(JFLD,IPOS) = PGPUV(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
-              ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP2+1)) THEN
-                IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP2)
+          ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP2+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP2)
             PGLAT(JFLD,IPOS) = PGP2(JK,IOFF+1,JBLK)
-              ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3A+1)) THEN
-                IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3A)
-                PBOUND=UBOUND(PGP3A,2)
+          ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3A+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3A)
+            PBOUND=UBOUND(PGP3A,2)
             PGLAT(JFLD,IPOS) = PGP3A(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
-              ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3B+1)) THEN
-                IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3B)
-                PBOUND=UBOUND(PGP3B,2)
+          ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3B+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3B)
+            PBOUND=UBOUND(PGP3B,2)
             PGLAT(JFLD,IPOS) = PGP3B(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
-            ENDIF
+          ENDIF
+        ENDDO
       ENDDO
-    ENDDO
-   ENDIF
-   CALL GSTATS(1601,1)
+    ENDIF
+    CALL GSTATS(1601,1)
 
-   !$ACC END DATA
+    !$ACC END DATA
 
   ENDIF
 
@@ -336,41 +329,38 @@ MODULE TRGTOL_MOD
     ICOMBUFR_OFFSET(JROC+1) = ICOMBUFR_OFFSET(JROC) + IRECVTOT(IRECV_TO_PROC(JROC))
   ENDDO
 
-  ! Send loop.............................................................
-  
   IF (ISEND_COUNTS > 0) ALLOCATE(ZCOMBUFS(ICOMBUFS_OFFSET(ISEND_COUNTS+1)))
   IF (IRECV_COUNTS > 0) ALLOCATE(ZCOMBUFR(ICOMBUFR_OFFSET(IRECV_COUNTS+1)))
-
   !$ACC DATA IF(ISEND_COUNTS > 0) CREATE(ZCOMBUFS) ASYNC(1)
   !$ACC DATA IF(IRECV_COUNTS > 0) CREATE(ZCOMBUFR) ASYNC(1)
-  
+
   !....Pack loop.........................................................
-  
+
   CALL GSTATS(1602,0)
   DO INS=1,ISEND_COUNTS
     ISEND=ISEND_TO_PROC(INS)
-      CALL PE2SET(ISEND,ISETA,ISETB,ISETW,ISETV)
+    CALL PE2SET(ISEND,ISETA,ISETB,ISETW,ISETV)
 
     ISEND_FIELD_COUNT_V = ISEND_FIELD_COUNT(ISETV)
     ICOMBUFS_OFFSET_V = ICOMBUFS_OFFSET(INS)
 
-      IFLDS = 0
-      DO JFLD=1,KF_GP
-        IF(KVSET(JFLD) == ISETV .OR. KVSET(JFLD) == -1 ) THEN
-          IFLDS = IFLDS+1
-          IF(PRESENT(KPTRGP)) THEN
-            IFLDA(IFLDS)=KPTRGP(JFLD)
-          ELSE
-            IFLDA(IFLDS)=JFLD
-          ENDIF
+    IFLDS = 0
+    DO JFLD=1,KF_GP
+      IF(KVSET(JFLD) == ISETV .OR. KVSET(JFLD) == -1 ) THEN
+        IFLDS = IFLDS+1
+        IF(PRESENT(KPTRGP)) THEN
+          IFLDA(IFLDS)=KPTRGP(JFLD)
+        ELSE
+          IFLDA(IFLDS)=JFLD
         ENDIF
-      ENDDO
-  
+      ENDIF
+    ENDDO
+
     !$ACC DATA COPYIN(IFLDA(1:ISEND_FIELD_COUNT_V)) ASYNC(1)
-  
+
     ISEND_WSET_OFFSET_V = ISEND_WSET_OFFSET(ISETW)
     ISEND_WSET_SIZE_V = ISEND_WSET_SIZE(ISETW)
-      IF(PRESENT(PGP)) THEN
+    IF(PRESENT(PGP)) THEN
       !$ACC PARALLEL LOOP COLLAPSE(2) DEFAULT(NONE) PRIVATE(JK,JBLK,IFLD,JI) ASYNC(1)
       DO JL=1,ISEND_WSET_SIZE_V
         DO JFLD=1,ISEND_FIELD_COUNT_V
@@ -379,47 +369,47 @@ MODULE TRGTOL_MOD
           IFLD = IFLDA(JFLD)
           JI = (JFLD-1)*ISEND_WSET_SIZE_V+JL
           ZCOMBUFS(ICOMBUFS_OFFSET_V+JI) = PGP(JK,IFLD,JBLK)
-          ENDDO
         ENDDO
-      ELSE
+      ENDDO
+    ELSE
       !$ACC PARALLEL LOOP COLLAPSE(2) DEFAULT(NONE) PRIVATE(JK,JBLK,IFLD,JI,IOFF) ASYNC(1)
       DO JL=1,ISEND_WSET_SIZE_V
         DO JFLD=1,ISEND_FIELD_COUNT_V
           JK = MOD(ISEND_WSET_OFFSET_V+JL-1,NPROMA)+1
           JBLK = (ISEND_WSET_OFFSET_V+JL-1)/NPROMA+1
-              IFLD=IFLDA(JFLD)
-          JI = (JFLD-1)*ISEND_WSET_SIZE_V+JL
-                IF(IFLD < PGP_INDICES(PGP_INDICES_UV+1)) THEN
-                  IOFF=IFLD-PGP_INDICES(PGP_INDICES_UV)
-                  PBOUND=UBOUND(PGPUV,2)
-                  ! TODO we could certainly reshape PGPXX arrays and we would simplify this
-            ZCOMBUFS(ICOMBUFS_OFFSET_V+JI) = PGPUV(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
-                ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP2+1)) THEN
-                  IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP2)
-            ZCOMBUFS(ICOMBUFS_OFFSET_V+JI)  = PGP2(JK,IOFF+1,JBLK)
-                ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3A+1)) THEN
-                  IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3A)
-                  PBOUND=UBOUND(PGP3A,2)
-            ZCOMBUFS(ICOMBUFS_OFFSET_V+JI) = PGP3A(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
-                ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3B+1)) THEN
-                  IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3B)
-                  PBOUND=UBOUND(PGP3B,2)
-            ZCOMBUFS(ICOMBUFS_OFFSET_V+JI)= PGP3B(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
-              ENDIF
-        ENDDO
+          IFLD = IFLDA(JFLD)
+          JI = ICOMBUFS_OFFSET_V+(JFLD-1)*ISEND_WSET_SIZE_V+JL
+          IF(IFLD < PGP_INDICES(PGP_INDICES_UV+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_UV)
+            PBOUND=UBOUND(PGPUV,2)
+            ! TODO we could certainly reshape PGPXX arrays and we would simplify this
+            ZCOMBUFS(JI) = PGPUV(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
+          ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP2+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP2)
+            ZCOMBUFS(JI)  = PGP2(JK,IOFF+1,JBLK)
+          ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3A+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3A)
+            PBOUND=UBOUND(PGP3A,2)
+            ZCOMBUFS(JI) = PGP3A(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
+          ELSEIF(IFLD < PGP_INDICES(PGP_INDICES_GP3B+1)) THEN
+            IOFF=IFLD-PGP_INDICES(PGP_INDICES_GP3B)
+            PBOUND=UBOUND(PGP3B,2)
+            ZCOMBUFS(JI)= PGP3B(JK,MOD(IOFF,PBOUND)+1,IOFF/PBOUND+1,JBLK)
+          ENDIF
+       ENDDO
       ENDDO
-      ENDIF
-      !$ACC END DATA
-    ENDDO
+    ENDIF
+    !$ACC END DATA
+  ENDDO
 
 
   CALL GSTATS(1602,1)
-  
+
   !$ACC WAIT(1)
   IF (LHOOK) CALL DR_HOOK('TRGTOL_BAR',0,ZHOOK_HANDLE_BAR)
   CALL GSTATS_BARRIER(761)
   IF (LHOOK) CALL DR_HOOK('TRGTOL_BAR',1,ZHOOK_HANDLE_BAR)
-  
+
   IF (LSYNC_TRANS) THEN
     CALL GSTATS(423,0)
     CALL MPL_BARRIER(CDSTRING='TRGTOL BARRIER')
@@ -435,18 +425,18 @@ MODULE TRGTOL_MOD
     IR=IR+1
     IPROC=IRECV_TO_PROC(INR)
     CALL MPI_IRECV(ZCOMBUFR(ICOMBUFR_OFFSET(INR)+1:ICOMBUFR_OFFSET(INR+1)),IRECVTOT(IPROC), &
-      & TRGTOL_DTYPE,NPRCIDS(IPROC)-1,MTAGGL,MPL_COMM_OML(OML_MY_THREAD()),IREQ(IR),IERROR)
+      & TRGTOL_DTYPE,NPRCIDS(IPROC)-1,MTAGLG,MPL_COMM_OML(OML_MY_THREAD()),IREQ(IR),IERROR)
   ENDDO
-  
+
   !....Send loop.........................................................
   DO INS=1,ISEND_COUNTS
     IR=IR+1
     ISEND=ISEND_TO_PROC(INS)
     CALL MPI_ISEND(ZCOMBUFS(ICOMBUFS_OFFSET(INS)+1:ICOMBUFS_OFFSET(INS+1)),ISENDTOT(ISEND), &
-     & TRGTOL_DTYPE,NPRCIDS(ISEND)-1,MTAGGL,MPL_COMM_OML(OML_MY_THREAD()),IREQ(IR),IERROR)
+     & TRGTOL_DTYPE,NPRCIDS(ISEND)-1,MTAGLG,MPL_COMM_OML(OML_MY_THREAD()),IREQ(IR),IERROR)
   ENDDO
   !$ACC END HOST_DATA
-  
+
   IF(IR > 0) THEN
     CALL MPL_WAIT(KREQUEST=IREQ(1:IR), &
       & CDSTRING='TRGTOL_CUDAAWARE: WAIT FOR SENDS AND RECEIVES')
@@ -455,10 +445,10 @@ MODULE TRGTOL_MOD
     CALL MPL_BARRIER(CDSTRING='TRGTOL BARRIER')
   ENDIF
   CALL GSTATS(413,1)
-  
+
   CALL GSTATS_BARRIER2(761)
   !  Unpack loop.........................................................
-  
+
   CALL GSTATS(1603,0)
 
 
@@ -467,32 +457,32 @@ MODULE TRGTOL_MOD
     ILEN = IRECVTOT(IPROC)/KF_FS
     IRECV_BUFR_TO_OUT_V = IRECV_BUFR_TO_OUT_OFFSET(IPROC)
     ICOMBUFR_OFFSET_V = ICOMBUFR_OFFSET(INR)
-      !$ACC PARALLEL LOOP COLLAPSE(2) DEFAULT(NONE) PRIVATE(II) ASYNC(1)
-      DO JFLD=1,KF_FS
-        DO JL=1,ILEN
+    !$ACC PARALLEL LOOP COLLAPSE(2) DEFAULT(NONE) PRIVATE(II) ASYNC(1)
+    DO JFLD=1,KF_FS
+      DO JL=1,ILEN
         II = IRECV_BUFR_TO_OUT(IRECV_BUFR_TO_OUT_V+JL)
         PGLAT(JFLD,II) = ZCOMBUFR(ICOMBUFR_OFFSET_V+JL+(JFLD-1)*ILEN)
-        ENDDO
       ENDDO
+    ENDDO
   ENDDO
-  !$ACC WAIT(1)
   !$ACC END DATA
-  
+
   CALL GSTATS(1603,1)
 
-   !$ACC END DATA  !! ZCOMBUFS
-   !$ACC END DATA  !! ZCOMBUFS
-   !$ACC END DATA  !! PRESENT(PGP3B)
-   !$ACC END DATA  !! PRESENT(PGP3A)
-   !$ACC END DATA  !! PRESENT(PGP2)
-   !$ACC END DATA  !! PRESENT(PGPUV)
-   !$ACC END DATA  !! PRESENT(PGP)
-  
+  !$ACC END DATA  !! ZCOMBUFS
+  !$ACC END DATA  !! ZCOMBUFS
+  !$ACC END DATA  !! PRESENT(PGP3B)
+  !$ACC END DATA  !! PRESENT(PGP3A)
+  !$ACC END DATA  !! PRESENT(PGP2)
+  !$ACC END DATA  !! PRESENT(PGPUV)
+  !$ACC END DATA  !! PRESENT(PGP)
+  !$ACC WAIT(1)
+
   IF (ISEND_COUNTS > 0) DEALLOCATE(ZCOMBUFS)
   IF (IRECV_COUNTS > 0) DEALLOCATE(ZCOMBUFR)
 
   IF (LHOOK) CALL DR_HOOK('TRGTOL_CUDAAWARE',1,ZHOOK_HANDLE)
-  
+
   END SUBROUTINE TRGTOL_CUDAAWARE
 
   SUBROUTINE TRGTOL(PGLAT,KF_FS,KF_GP,KF_SCALARS_G,KVSET,KPTRGP,&
@@ -554,10 +544,10 @@ MODULE TRGTOL_MOD
   
   
   
-  USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRB,  JPRBT
-  USE YOMHOOK         ,ONLY : LHOOK,   DR_HOOK, JPHOOK
+  USE PARKIND_ECTRANS  ,ONLY : JPIM     ,JPRB,  JPRBT
+  USE YOMHOOK   ,ONLY : LHOOK,   DR_HOOK, JPHOOK
   
-  USE MPL_MODULE      ,ONLY : MPL_RECV, MPL_SEND, MPL_WAIT, JP_NON_BLOCKING_STANDARD
+  USE MPL_MODULE  ,ONLY : MPL_RECV, MPL_SEND, MPL_WAIT, JP_NON_BLOCKING_STANDARD
   
   USE TPM_GEN         ,ONLY : NOUT
   USE TPM_DISTR       ,ONLY : D, NPRCIDS, NPRTRNS, MTAGGL,  &
@@ -945,6 +935,8 @@ MODULE TRGTOL_MOD
               DO JK=IFIRST,ILAST
                 IPOS = INDOFF(MYPROC)+IGPTROFF(JBLK)+JK-IFIRST+1
                 PGLAT(JFLD,KINDEX(IPOS)) = PGPUV(JK,IUVLEVS(IFLD),IUVPARS(IFLD),JBLK)
+                !if(jfld<=5 .and. kindex(ipos)<5) write(nout,*)'trgtol: ipos=',ipos,' idx=',kindex(ipos),' jk=',jk,' lev=',iuvlevs(ifld),' pars=',iuvpars(ifld),' pglat=',PGLAT(JFLD,KINDEX(IPOS))
+                !if( jfld.eq.1 ) write(nout,*)'trgtoluv: ',kindex(ipos),' lev=',iuvlevs(ifld),' pars=',iuvpars(ifld),' pglat=',PGLAT(JFLD,KINDEX(IPOS))
               ENDDO
             ELSEIF(LLGP2(IFLD)) THEN
               DO JK=IFIRST,ILAST
@@ -955,6 +947,7 @@ MODULE TRGTOL_MOD
               DO JK=IFIRST,ILAST
                 IPOS = INDOFF(MYPROC)+IGPTROFF(JBLK)+JK-IFIRST+1
                 PGLAT(JFLD,KINDEX(IPOS)) = PGP3A(JK,IGP3ALEVS(IFLD),IGP3APARS(IFLD),JBLK)
+                !if( jk.eq.ifirst ) write(iunit,*)'trgtol: ',JK,JFLD,IFLD,kindex(ipos),' lev=',IGP3ALEVS(ifld),' pars=',IGP3APARS(ifld),' pglat=',PGLAT(JFLD,KINDEX(IPOS))
               ENDDO
             ELSEIF(LLGP3B(IFLD)) THEN
               DO JK=IFIRST,ILAST
@@ -1145,8 +1138,8 @@ MODULE TRGTOL_MOD
   ! this appears to be important (otherwise, old data picked in PGLAT)
   ! in particular, one would have thought that above ACC copy and update on the
   ! device is the same as OMP loop + update device command below, but it seems not, and winds still in field index 1 from prev inv_trans !!!
-  !$ACC UPDATE DEVICE(PGLAT)
-  !$ACC WAIT
+  !$ACC update device(PGLAT)
+  !$ACC wait
   
   !#ifdef COMVERBOSE
   !  call MPI_BARRIER(MPI_COMM_WORLD,IERROR)
@@ -1155,13 +1148,13 @@ MODULE TRGTOL_MOD
   !#endif
 
   CALL GSTATS(1603,1)
- 
+  
   IF (IBUFLENS > 0) DEALLOCATE(ZCOMBUFS)
   IF (IBUFLENR > 0) DEALLOCATE(ZCOMBUFR)
 
   !$ACC UPDATE DEVICE(PGLAT)
 
   IF (LHOOK) CALL DR_HOOK('TRGTOL',1,ZHOOK_HANDLE)
- 
+  
   END SUBROUTINE TRGTOL
   END MODULE TRGTOL_MOD
