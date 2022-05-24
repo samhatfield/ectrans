@@ -67,7 +67,7 @@ foreach( prec sp dp )
                        ${LAPACK_LIBRARIES}
     )
     # Propagate "-acc" as link flag for NVHPC Fortran linker
-    target_link_options( trans_gpu_object_${prec} INTERFACE "$<$<LINK_LANG_AND_ID:Fortran,NVHPC>:-acc>" )
+    target_link_options( trans_gpu_object_${prec} INTERFACE $<$<LINK_LANG_AND_ID:Fortran,NVHPC>:-acc -Mcuda> )
 
     ectrans_target_fortran_module_directory(
       TARGET            trans_gpu_object_${prec}
