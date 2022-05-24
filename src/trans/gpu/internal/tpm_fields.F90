@@ -1,5 +1,5 @@
 ! (C) Copyright 2000- ECMWF.
-! (C) Copyright 2000- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -17,19 +17,19 @@ IMPLICIT NONE
 SAVE
 
 TYPE FIELDS_TYPE
-REAL(KIND=JPRD)    ,ALLOCATABLE :: RPNM(:,:) ! Legendre polynomials
-REAL(KIND=JPRD)    ,ALLOCATABLE :: RMU(:)    ! sin(theta) for Gaussian latitudes
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: RW(:)     ! Weights of the Gaussian quadrature
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: R1MU2(:)  ! 1.-MU*MU, cos(theta)**2
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: RACTHE(:) ! 1./SQRT(R1MU2), 1/(cos(theta))
+REAL(KIND=JPRD) ,ALLOCATABLE :: RPNM(:,:) ! Legendre polynomials
+REAL(KIND=JPRD) ,ALLOCATABLE :: RMU(:)    ! sin(theta) for Gaussian latitudes
+REAL(KIND=JPRBT) ,ALLOCATABLE :: RW(:)     ! Weights of the Gaussian quadrature
+REAL(KIND=JPRBT) ,ALLOCATABLE :: R1MU2(:)  ! 1.-MU*MU, cos(theta)**2
+REAL(KIND=JPRBT) ,ALLOCATABLE :: RACTHE(:) ! 1./SQRT(R1MU2), 1/(cos(theta))
 
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: REPSNM(:) ! eps(n,m) used in the Legendre transforms
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: RN(:)     ! n (to avoid integer to real conversion)
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: RLAPIN(:) ! eigen-values of the inverse Laplace operator
-INTEGER(KIND=JPIM) ,ALLOCATABLE :: NLTN(:)   ! R%NTMAX+2-JN
+REAL(KIND=JPRBT) ,ALLOCATABLE :: REPSNM(:) ! eps(n,m) used in the Legendre transforms
+REAL(KIND=JPRBT) ,ALLOCATABLE :: RN(:)     ! n (to avoid integer to real conversion)
+REAL(KIND=JPRBT) ,ALLOCATABLE :: RLAPIN(:) ! eigen-values of the inverse Laplace operator
+INTEGER(KIND=JPIM) ,ALLOCATABLE :: NLTN(:) ! R%NTMAX+2-JN
 
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: RMU2(:)   ! sin(theta) for dual input/output latitudes
-REAL(KIND=JPRBT)   ,ALLOCATABLE :: RACTHE2(:)! 1./SQRT(R1MU2), 1/(cos(theta)) dual input/output latitudes
+REAL(KIND=JPRBT) ,ALLOCATABLE :: RMU2(:)    ! sin(theta) for dual input/output latitudes
+REAL(KIND=JPRBT) ,ALLOCATABLE :: RACTHE2(:) ! 1./SQRT(R1MU2), 1/(cos(theta)) dual input/output latitudes
 END TYPE FIELDS_TYPE
 
 !flat copies of the above
@@ -115,5 +115,16 @@ REAL(KIND=JPRBT),ALLOCATABLE :: ZSIA(:,:,:)
 REAL(KIND=JPRBT),ALLOCATABLE :: ZAIA(:,:,:)
 REAL(KIND=JPRBT),ALLOCATABLE, TARGET :: ZOA1(:,:,:)
 REAL(KIND=JPRBT),ALLOCATABLE, TARGET :: ZOA2(:,:,:)
+
+! TODO find a better place for this
+INTEGER(JPIM) :: ZGTF_START(8)
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_VOR = 1
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_DIV = 2
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_UV = 3
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_SCALAR = 4
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_NSDERS = 5
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_UVDERS = 6
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_EWDERS = 7
+INTEGER(JPIM), PARAMETER :: ZGTF_START_INDEX_END = 8
 
 END MODULE TPM_FIELDS
