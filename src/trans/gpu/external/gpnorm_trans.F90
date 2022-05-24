@@ -1,5 +1,5 @@
 ! (C) Copyright 2008- ECMWF.
-! (C) Copyright 2008- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -51,7 +51,7 @@ SUBROUTINE GPNORM_TRANS(PGP,KFIELDS,KPROMA,PAVE,PMIN,PMAX,LDAVE_ONLY,KRESOL)
 !     ------------------------------------------------------------------
 
 USE PARKIND1        ,ONLY : JPIM     ,JPRB , JPRD
-USE PARKIND_ECTRANS ,ONLY : JPRBT
+USE PARKIND_ECTRANS ,ONLY  : JPRBT
 
 !ifndef INTERFACE
 
@@ -160,9 +160,17 @@ DO J=1,KFIELDS
 ENDDO
 
 
+!iunit=300+myproc
+!DO JF=1,IF_GP
+!  write(iunit,*) 'PGP field=',JF,PGP(1,JF,1),PGP(NPROMA,JF,1),PGP(1,JF,NGPBLKS)
+!ENDDO
+
 ! done in setup_trans
 LGPNORM=.TRUE.
-CALL TRGTOL(ZGTF,IF_FS,IF_GP,IF_SCALARS_G,IVSET,PGP=PGP)
+print *, "not supported"
+flush(6)
+stop 1
+! CALL TRGTOL(ZGTF,IF_FS,IF_GP,IF_SCALARS_G,IVSET,PGP=PGP)
 LGPNORM=.FALSE.
 
 ! ZGTF is now on GPU
@@ -173,10 +181,10 @@ IEND=D%NDGL_FS
 CALL GSTATS(1429,0)
 IF( IF_FS > 0 )THEN
 
- !$ACC DATA &
+ !$ACC data &
  !$ACC& COPY(F,F%RW) &
  !$ACC& COPY(D,D_NSTAGTF,D_NPTRLS,G_NLOEN,G_NLOEN_MAX) &
- !$ACC& PRESENT(ZGTF,ZAVE,ZMINGL,ZMAXGL,ZMINGPN,ZMAXGPN)
+ !$ACC& present(ZGTF,ZAVE,ZMINGL,ZMAXGL,ZMINGPN,ZMAXGPN)
 
     !$ACC KERNELS
     DO JF=1,IF_FS
@@ -191,8 +199,8 @@ IF( IF_FS > 0 )THEN
   DO JGL=IBEG,IEND
     IGL = D_NPTRLS(MYSETW) + JGL - 1
     DO JF=1,IF_FS
-      ZAVE(JF,JGL)=0.0_JPRBT
-      !$ACC LOOP
+      ZAVE(JF,JGL)=0.0_JPRB
+      !$ACC loop
       DO JL=1,G_NLOEN(IGL)
         ZAVE(JF,JGL)=ZAVE(JF,JGL)+ZGTF(JF,D_NSTAGTF(JGL)+JL)
         ZMINGL(JF,JGL)=MIN(ZMINGL(JF,JGL),ZGTF(JF,D_NSTAGTF(JGL)+JL))
@@ -219,12 +227,20 @@ IF( IF_FS > 0 )THEN
   ENDDO
   !$ACC END KERNELS
 
-!$ACC END DATA
+!$ACC end data
 
-!$ACC UPDATE HOST(ZAVE)
-!$ACC UPDATE HOST(ZMINGPN)
-!$ACC UPDATE HOST(ZMAXGPN)
-!$ACC WAIT
+!$ACC update host(ZAVE)
+!$ACC update host(ZMINGPN)
+!$ACC update host(ZMAXGPN)
+!$ACC wait
+
+!iunit=300+myproc
+!DO JGL=IBEG,IEND
+! IGL = D_NPTRLS(MYSETW) + JGL - 1
+! DO JF=1,IF_FS
+!   write(iunit,*) 'aver final ',JF,IF_FS,IGL,ZAVE(JF,JGL),ZMINGPN(JF),ZMAXGPN(JF)
+! ENDDO
+!ENDDO
 
 ENDIF
 CALL GSTATS(1429,1)

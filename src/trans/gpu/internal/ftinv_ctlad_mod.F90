@@ -1,5 +1,5 @@
 ! (C) Copyright 2000- ECMWF.
-! (C) Copyright 2000- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -11,9 +11,9 @@
 MODULE FTINV_CTLAD_MOD
 CONTAINS
 SUBROUTINE FTINV_CTLAD(KF_UV_G,KF_SCALARS_G,&
- &                     KF_UV,KF_SCALARS,KF_SCDERS,KF_GP,KF_FS,KF_OUT_LT,KVSETUV,KVSETSC,KPTRGP, &
- &                     KVSETSC3A,KVSETSC3B,KVSETSC2,&
- &                     PGP,PGPUV,PGP3A,PGP3B,PGP2)
+ & KF_UV,KF_SCALARS,KF_SCDERS,KF_GP,KF_FS,KF_OUT_LT,KVSETUV,KVSETSC,KPTRGP, &
+ & KVSETSC3A,KVSETSC3B,KVSETSC2,&
+ & PGP,PGPUV,PGP3A,PGP3B,PGP2)
 
 
 !**** *FTINV_CTLAD - Inverse Fourier transform control - adjoint
@@ -61,7 +61,7 @@ SUBROUTINE FTINV_CTLAD(KF_UV_G,KF_SCALARS_G,&
 
 !     ------------------------------------------------------------------
 
-USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRB, JPRBT
+USE PARKIND_ECTRANS  ,ONLY : JPIM     ,JPRB, JPRBT
 
 USE TPM_GEN         ,ONLY : NERR
 !USE TPM_DIM
@@ -69,7 +69,7 @@ USE TPM_GEN         ,ONLY : NERR
 USE TPM_TRANS       ,ONLY : FOUBUF, LDIVGP, LSCDERS, LUVDER, LVORGP
 USE TPM_DISTR       ,ONLY : D, MYPROC, NPROC
 
-USE FOURIER_INAD_MOD,ONLY : FOURIER_INAD
+USE FOURIER_INAD_MOD ,ONLY : FOURIER_INAD
 USE FSCAD_MOD       ,ONLY : FSCAD
 USE FTINVAD_MOD     ,ONLY : FTINVAD
 USE TRGTOL_MOD      ,ONLY : TRGTOL
@@ -196,8 +196,11 @@ IF(KF_SCALARS_G > 0) THEN
 ENDIF
 
 CALL GSTATS(182,0)
-CALL TRGTOL(ZGTF,KF_FS,KF_GP,KF_SCALARS_G,IVSET,KPTRGP,&
- &PGP,PGPUV,PGP3A,PGP3B,PGP2)
+print *, "not supported..."
+flush(6)
+stop
+! CALL TRGTOL(ZGTF,KF_FS,KF_GP,KF_SCALARS_G,IVSET,KPTRGP,&
+ ! &PGP,PGPUV,PGP3A,PGP3B,PGP2)
 CALL GSTATS(182,1)
 
 !   3.  Fourier transform
