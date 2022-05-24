@@ -41,6 +41,7 @@ if( HAVE_GPU_REDUCED_MEMORY )
 endif()
 
 ecbuild_list_exclude_pattern( LIST trans_src            REGEX dilatation_mod.F90 )
+ecbuild_find_package( NAME NvidiaCutlass REQUIRED)
 
 foreach( prec sp dp )
   if( HAVE_${prec} )
@@ -64,6 +65,7 @@ foreach( prec sp dp )
                        MPI::MPI_Fortran
                        MPI::MPI_C
                        nvhpcwrapnvtx
+                       nvidia::cutlass::cutlass
                        ${LAPACK_LIBRARIES}
     )
     # Propagate "-acc" as link flag for NVHPC Fortran linker
