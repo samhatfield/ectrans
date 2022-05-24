@@ -1,5 +1,5 @@
 ! (C) Copyright 2000- ECMWF.
-! (C) Copyright 2000- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -46,12 +46,15 @@ SUBROUTINE FTDIR(KFIELDS)
 
 !     ------------------------------------------------------------------
 
-USE PARKIND_ECTRANS ,ONLY : JPIM, JPIB, JPRBT
+USE PARKIND_ECTRANS  ,ONLY : JPIM, JPIB, JPRBT
 
 USE TPM_DISTR       ,ONLY : D, MYSETW, MYPROC, NPROC,D_NSTAGTF,D_NPTRLS
 USE TPM_TRANS       ,ONLY : ZGTF
 USE TPM_GEOMETRY    ,ONLY : G,G_NMEN,G_NMEN_MAX,G_NLOEN,G_NLOEN_MAX
 USE TPM_FFT         ,ONLY : T
+#ifdef WITH_FFTW
+USE TPM_FFTW        ,ONLY : TW, EXEC_FFTW
+#endif
 USE TPM_FFTC        ,ONLY : CREATE_PLAN_FFT
 USE TPM_DIM         ,ONLY : R,R_NNOEXTZL
 USE CUDA_DEVICE_MOD
@@ -73,7 +76,7 @@ LOGICAL :: LL_ALL=.FALSE. ! T=do kfields ffts in one batch, F=do kfields ffts on
 INTEGER(KIND=JPIM) :: IBEG,IEND,IINC,ISCAL
 INTEGER(KIND=JPIM) :: OFFSET_VAR, IUNIT, ISIZE, II, IMAX
 integer :: istat, idev
-REAL(KIND=JPRBT), ALLOCATABLE :: ZGTF2(:,:)
+real(kind=jprbt), allocatable :: zgtf2(:,:)
 
 !     ------------------------------------------------------------------
 
@@ -86,10 +89,6 @@ ELSE
   IEND=1
   IINC=-1
 ENDIF
-
-OFFSET_VAR=D_NPTRLS(MYSETW)
-
-IMAX = G_NLOEN_MAX + 2 + R_NNOEXTZL
 
 
 allocate(zgtf2(size(zgtf,1),size(zgtf,2)))
@@ -108,41 +107,40 @@ DO KGL=IBEG,IEND,IINC
   !ICLEN=(IRLEN/2+1)*2
 
   CALL CREATE_PLAN_FFT(IPLAN_R2C,-1,G%NLOEN(IGLG),KFIELDS)
-  !$ACC HOST_DATA USE_DEVICE(ZGTF,ZGTF2)
+  !$ACC host_data use_device(ZGTF,ZGTF2)
   CALL EXECUTE_PLAN_FFTC(IPLAN_R2C,-1,ZGTF(1,IOFF),ZGTF2(1,IOFF))
-  !$ACC END HOST_DATA
+  !$ACC end host_data
 END DO
 !!$OMP END PARALLEL DO
 
-ISTAT = CUDA_SYNCHRONIZE()
+istat = cuda_Synchronize()
 
-!$ACC KERNELS DEFAULT(NONE)
-ZGTF(:,:) = ZGTF2(:,:)
-!$ACC END KERNELS
-!$ACC END DATA
-
-!$ACC PARALLEL LOOP COLLAPSE(3) PRIVATE(JMAX,KGL,IOFF,SCAL,IST) DEFAULT(NONE)
+OFFSET_VAR=D_NPTRLS(MYSETW)
+!$ACC parallel loop collapse(2) private(JMAX,JJ,KGL,IOFF,SCAL,IST) DEFAULT(NONE)
 DO IGLG=IBEG+OFFSET_VAR-1,IEND+OFFSET_VAR-1,IINC
-   DO JJ=1, IMAX
-      DO JF=1,KFIELDS
-         JMAX = G_NLOEN(IGLG)
-         IST  = 2*(G_NMEN(IGLG)+1)
-         IF (JJ .LE. JMAX) THEN
-           KGL=IGLG-OFFSET_VAR+1
-           IOFF=D_NSTAGTF(KGL)+1
-           SCAL = 1._JPRBT/REAL(G_NLOEN(IGLG),JPRBT)
-           ZGTF(JF,IOFF+JJ-1)= SCAL * ZGTF(JF, IOFF+JJ-1)
-         END IF
+   DO JF=1,KFIELDS
+     JMAX = G_NLOEN(IGLG)
+     SCAL = 1._JPRBT/REAL(JMAX,JPRBT)
+     IST  = 2*(G_NMEN(IGLG)+1)
+     KGL=IGLG-OFFSET_VAR+1
+     IOFF=D_NSTAGTF(KGL)+1
 
-         ! case JJ>0
-         IF( JJ .LE. (JMAX+R_NNOEXTZL+2-IST)) ZGTF(JF,IST+IOFF+JJ-1) = 0.0_JPRBT
-         ! case JJ=0
-         IF (G_NLOEN(IGLG)==1) ZGTF(JF,IST+IOFF-1) = 0.0_JPRBT
+     !$ACC LOOP SEQ
+     DO JJ=1, JMAX
+        ZGTF(JF,IOFF+JJ-1)= SCAL * ZGTF2(JF, IOFF+JJ-1)
+      ENDDO
+
+      !! WHAT'S GOING ON HERE? TRUNCATING?
+      IF (JMAX== 1) ZGTF(JF,IST+IOFF-1) = 0.0_JPRBT
+      !$ACC LOOP SEQ
+      DO JJ=1,JMAX+R%NNOEXTZL+3-IST
+        ZGTF(JF,IST+IOFF+JJ-1) = 0.0_JPRBT
       ENDDO
    ENDDO
 ENDDO
+!$acc end data
 
-!$ACC END DATA
+!$ACC end data
 
 !     ------------------------------------------------------------------
 
