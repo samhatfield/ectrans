@@ -1,5 +1,5 @@
 ! (C) Copyright 2000- ECMWF.
-! (C) Copyright 2000- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -12,12 +12,13 @@ MODULE PRFI1B_MOD
   CONTAINS
   SUBROUTINE PRFI1B(PIA,PSPEC,KFIELDS,KDIM,KFLDPTR)
   
-  USE PARKIND1  ,ONLY : JPIM     ,JPRB
+USE PARKIND1  ,ONLY : JPIM     ,JPRB
   
-  USE TPM_GEN   ,ONLY : NOUT
-  USE TPM_DIM   ,ONLY : R,R_NSMAX
-  USE TPM_DISTR ,ONLY : D,D_NUMP,D_MYMS,D_NASM0
-  USE IEEE_ARITHMETIC
+  use tpm_gen, only: nout
+  USE TPM_DIM         ,ONLY : R,R_NSMAX
+  USE TPM_DISTR       ,ONLY : D,D_NUMP,D_MYMS,D_NASM0
+  use ieee_arithmetic
+  !use openacc
   
   !**** *PRFI1* - Prepare spectral fields for inverse Legendre transform
   
@@ -72,7 +73,7 @@ MODULE PRFI1B_MOD
   INTEGER(KIND=JPIM),INTENT(IN),OPTIONAL :: KFLDPTR(:)
   
   !     LOCAL INTEGER SCALARS
-  INTEGER(KIND=JPIM) :: II, INM, IR, J, JFLD, ILCM, IOFF,IFLD
+  INTEGER(KIND=JPIM) :: II, INM, IR, JN, JFLD, ILCM, IASM0,IFLD
   
   
   !     ------------------------------------------------------------------
@@ -87,30 +88,30 @@ MODULE PRFI1B_MOD
 
   !$ACC DATA IF(PRESENT(KFLDPTR)) PRESENT(KFLDPTR)
 
- 
+  
   IF(PRESENT(KFLDPTR)) THEN
- 
- 
+   
+   
    !loop over wavenumber
- 
-   !$ACC PARALLEL LOOP COLLAPSE(3) DEFAULT(NONE) PRIVATE(KM,ILCM,IFLD,IOFF,IR,II,INM)
+   
+   !$ACC PARALLEL LOOP COLLAPSE(3) DEFAULT(NONE) PRIVATE(KM,ILCM,IFLD,IASM0,IR,II,INM)
    DO KMLOC=1,D_NUMP
-      DO J=1,R_NSMAX+1
+      DO JN=1,R_NSMAX+1
          DO JFLD=1,KFIELDS
             KM = D_MYMS(KMLOC)
             ILCM = R_NSMAX+1-KM
             IFLD = KFLDPTR(JFLD)
-            IF (J .LE. ILCM) THEN
-               IOFF = D_NASM0(KM)
-               INM = IOFF+(ILCM-J)*2
+            IF (JN .LE. ILCM) THEN
+               IASM0 = D_NASM0(KM)
+               INM = IASM0+(ILCM-JN)*2
                IR = 2*(JFLD-1)+1
                II = IR+1
-               PIA(IR,J+2,KMLOC) = PSPEC(iFLD,INM  )
-               PIA(II,J+2,KMLOC) = PSPEC(iFLD,INM+1)
+               PIA(IR,JN+2,KMLOC) = PSPEC(iFLD,INM  )
+               PIA(II,JN+2,KMLOC) = PSPEC(iFLD,INM+1)
             END IF
          ENDDO
       ENDDO
- 
+   
       ! end loop over wavenumber
    END DO
 
@@ -126,50 +127,45 @@ MODULE PRFI1B_MOD
       ! end loop over wavenumber
    END DO
 
-  ELSE
+ELSE
 
-   !loop over wavenumber
+  !loop over wavenumber
 
-   !$ACC PARALLEL LOOP !!COLLAPSE(3) PRIVATE(KM,ILCM,IOFF,INM,IR,II)
-   DO KMLOC=1,D_NUMP
-      DO J=1,R_NSMAX+1
-         DO JFLD=1,KFIELDS
-            KM = D_MYMS(KMLOC)
-            ILCM = R_NSMAX+1-KM
-            if (J .le. ILCM) then
-               IOFF = D_NASM0(KM)
-               INM = IOFF+(ILCM-J)*2
-               IR = 2*(JFLD-1)+1
-               II = IR+1
-               IF( INM .LT. KDIM ) THEN
-               PIA(IR,J+2,KMLOC) = PSPEC(JFLD,INM  )
-               PIA(II,J+2,KMLOC) = PSPEC(JFLD,INM+1)
-               ENDIF
-            end if
-         ENDDO
+  !$ACC PARALLEL LOOP COLLAPSE(2) PRIVATE(KM,ILCM,IASM0,INM,JN) DEFAULT(NONE)
+  DO KMLOC=1,D_NUMP
+    DO JFLD=1,KFIELDS
+      KM = D_MYMS(KMLOC)
+      IASM0 = D_NASM0(KM)
+
+      !$ACC LOOP SEQ
+      DO JN=2,R_NSMAX+2-KM
+        INM = IASM0+((R_NSMAX+2-JN)-KM)*2
+        IF( INM .LT. KDIM ) THEN ! TODO is this really needed, we don't have it in the reverse...
+          ! TODO THIS IS NOT JN+1 in the reverse code but JN
+          PIA(2*JFLD-1,JN+1,KMLOC) = PSPEC(JFLD,INM  )
+          PIA(2*JFLD  ,JN+1,KMLOC) = PSPEC(JFLD,INM+1)
+        END IF
       ENDDO
- 
-      ! end loop over wavenumber
-   END DO
+    ENDDO
+  END DO
 
-   !$ACC PARALLEL LOOP COLLAPSE(2) PRIVATE(KM,ILCM)
-   DO KMLOC=1,D_NUMP
-      DO JFLD=1,2*KFIELDS
-         KM = D_MYMS(KMLOC) 
-         ILCM = R_NSMAX+1-KM
-         PIA(JFLD,1,KMLOC) = 0.0_JPRB
-         PIA(JFLD,2,KMLOC) = 0.0_JPRB
-         PIA(JFLD,ILCM+3,KMLOC) = 0.0_JPRB
-      ENDDO 
-      ! end loop over wavenumber
-   END DO
- 
-  END IF   
+  !$ACC PARALLEL LOOP COLLAPSE(2) PRIVATE(KM,JN)
+  DO KMLOC=1,D_NUMP
+    DO JFLD=1,2*KFIELDS
+      PIA(JFLD,1,KMLOC) = 0.0_JPRB
+      PIA(JFLD,2,KMLOC) = 0.0_JPRB
+
+      KM = D_MYMS(KMLOC)
+      JN = R_NSMAX+3-KM
+      PIA(JFLD,JN+1,KMLOC) = 0.0_JPRB
+    ENDDO
+  END DO
+END IF
 
    !$ACC END DATA
    !$ACC END DATA
 
   !     ------------------------------------------------------------------
- 
+  
   END SUBROUTINE PRFI1B
-END MODULE PRFI1B_MOD
+  END MODULE PRFI1B_MOD
