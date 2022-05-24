@@ -1,5 +1,5 @@
 ! (C) Copyright 1995- ECMWF.
-! (C) Copyright 1995- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -61,56 +61,42 @@ MODULE TRLTOM_MOD
   !        G.Mozdzynski : 08-01-01 Cleanup
   !        Y.Seity   : 07-08-30 Add barrier synchonisation under LSYNC_TRANS
   !     ------------------------------------------------------------------
-
-  USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRBT
-  USE YOMHOOK         ,ONLY : LHOOK,   DR_HOOK, JPHOOK
-
-  USE MPL_MODULE      ,ONLY : MPL_ALLTOALLV, MPL_BARRIER, MPL_ALL_MS_COMM, MPL_MYRANK, MPL_WAIT, JP_NON_BLOCKING_STANDARD
-
+  
+  USE PARKIND_ECTRANS  ,ONLY : JPIM     ,JPRBT
+  USE YOMHOOK   ,ONLY : LHOOK,   DR_HOOK, JPHOOK
+  
+  USE MPL_MODULE  ,ONLY : MPL_ALLTOALLV, MPL_BARRIER, MPL_ALL_MS_COMM, MPL_MYRANK, MPL_WAIT, JP_NON_BLOCKING_STANDARD
+  
   USE TPM_DISTR       ,ONLY : D, MTAGLM, MYSETW, NPRTRW, NPROC, MYPROC
   USE TPM_GEN         ,ONLY : LSYNC_TRANS
-
+  
   USE MPI
-
+  
   !USE SET2PE_MOD
   !USE MYSENDSET_MOD
   !USE MYRECVSET_MOD
   !USE ABORT_TRANS_MOD
   !
-
+  
   IMPLICIT NONE
-
-
-  INTERFACE
-
-    FUNCTION ALLTOALLV_CUDAIPC(input,len,soff,output,roff,mtol_or_ltom) BIND(C,name='Alltoallv_CUDAIPC')
-      USE, INTRINSIC :: ISO_C_BINDING
-      IMPLICIT NONE
-      real(c_double), dimension(*) :: input,output
-      integer(c_int), dimension(*) :: len,soff,roff
-      integer(c_int),value :: mtol_or_ltom
-      integer(c_int) :: ALLTOALLV_CUDAIPC
-    END FUNCTION ALLTOALLV_CUDAIPC
-
-  END INTERFACE
-
-
+  
   INTEGER(KIND=JPIM),INTENT(IN)  :: KFIELD
   REAL(KIND=JPRBT)   ,INTENT(INOUT)  :: PFBUF(:)
   REAL(KIND=JPRBT)   ,INTENT(INOUT)  :: PFBUF_IN(:)
-
+  
   INTEGER(KIND=JPIM) :: ILENS(NPRTRW),IOFFS(NPRTRW),ILENR(NPRTRW),IOFFR(NPRTRW)
-
+  
   INTEGER(KIND=JPIM) :: ITAG, J, ILEN, ISTA
-
-  REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
-  REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR
-  REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR2
-
+  
+REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
+REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR
+REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR2
+  
+  REAL(KIND=JPRBT)    :: ZDUM(1)
   INTEGER(KIND=JPIM) :: IREQ
   INTEGER(KIND=JPIM) :: IERROR
   !     ------------------------------------------------------------------
-
+  
   REAL(KIND=JPRBT) :: T1, T2, TIMEF, Tc
   INTEGER(KIND=JPIM) :: MTOL_OR_LTOM, NOFULLPEERACCESS
   INTEGER(KIND=JPIM) :: IRANK,IUNIT
@@ -124,16 +110,16 @@ MODULE TRLTOM_MOD
 #else
 #define TRLTOM_DTYPE MPI_DOUBLE_PRECISION
 #endif
-
+  
   ITAG = MTAGLM
-
+  
   DO J=1,NPRTRW
     ILENS(J) = D%NLTSGTB(J)*KFIELD
     IOFFS(J) = D%NSTAGT1B(D%MSTABF(J))*KFIELD
     ILENR(J) = D%NLTSFTB(J)*KFIELD
     IOFFR(J) = D%NSTAGT1B(J)*KFIELD
   ENDDO
-
+  
   IF(NPROC > 1) THEN
     CALL GSTATS(806,0)
     IF (LSYNC_TRANS) THEN
@@ -159,7 +145,7 @@ MODULE TRLTOM_MOD
         ILENS(IRANK) = 0
         ILENR(IRANK) = 0
     ENDIF
-
+  
     CALL GSTATS(411,0)
     !$ACC HOST_DATA USE_DEVICE(PFBUF_IN, PFBUF)
 
@@ -183,7 +169,7 @@ MODULE TRLTOM_MOD
     ENDDO
     CALL GSTATS(1607,1)
   ENDIF
-
+  
   IF (LHOOK) CALL DR_HOOK('TRLTOM_CUDAAWARE',1,ZHOOK_HANDLE)
   !     ------------------------------------------------------------------
   END SUBROUTINE TRLTOM_CUDAAWARE
@@ -240,10 +226,10 @@ MODULE TRLTOM_MOD
   !        Y.Seity   : 07-08-30 Add barrier synchonisation under LSYNC_TRANS
   !     ------------------------------------------------------------------
   
-  USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRBT
-  USE YOMHOOK         ,ONLY : LHOOK,   DR_HOOK, JPHOOK
+  USE PARKIND_ECTRANS  ,ONLY : JPIM     ,JPRBT
+  USE YOMHOOK   ,ONLY : LHOOK,   DR_HOOK, JPHOOK
   
-  USE MPL_MODULE      ,ONLY : MPL_ALLTOALLV, MPL_BARRIER, MPL_ALL_MS_COMM, MPL_MYRANK, MPL_WAIT, JP_NON_BLOCKING_STANDARD
+  USE MPL_MODULE  ,ONLY : MPL_ALLTOALLV, MPL_BARRIER, MPL_ALL_MS_COMM, MPL_MYRANK, MPL_WAIT, JP_NON_BLOCKING_STANDARD
   
   USE TPM_DISTR       ,ONLY : D, MTAGLM, MYSETW, NPRTRW, NPROC, MYPROC
   USE TPM_GEN         ,ONLY : LSYNC_TRANS
@@ -258,61 +244,48 @@ MODULE TRLTOM_MOD
   
   IMPLICIT NONE
   
-  
-  INTERFACE
-  
-    FUNCTION ALLTOALLV_CUDAIPC(input,len,soff,output,roff,mtol_or_ltom) BIND(C,name='Alltoallv_CUDAIPC')
-      USE, INTRINSIC :: ISO_C_BINDING
-      IMPLICIT NONE
-      real(c_double), dimension(*) :: input,output
-      integer(c_int), dimension(*) :: len,soff,roff
-      integer(c_int),value :: mtol_or_ltom
-      integer(c_int) :: ALLTOALLV_CUDAIPC
-    END FUNCTION ALLTOALLV_CUDAIPC
-
-  END INTERFACE
-
-
   INTEGER(KIND=JPIM),INTENT(IN)  :: KFIELD
   REAL(KIND=JPRBT)   ,INTENT(INOUT)  :: PFBUF(:)
   REAL(KIND=JPRBT)   ,INTENT(INOUT)  :: PFBUF_IN(:)
-
+  
   INTEGER(KIND=JPIM) :: ILENS(NPRTRW),IOFFS(NPRTRW),ILENR(NPRTRW),IOFFR(NPRTRW)
-
+  
   INTEGER(KIND=JPIM) :: ITAG, J, ILEN, ISTA
-
-  REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
-  REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR
-  REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR2
- 
+  
+REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
+REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR
+REAL(KIND=JPHOOK) :: ZHOOK_HANDLE_BAR2
+  
   REAL(KIND=JPRBT)    :: ZDUM(1)
   INTEGER(KIND=JPIM) :: IREQ
   INTEGER(KIND=JPIM) :: IERROR
   !     ------------------------------------------------------------------
- 
+  
   REAL(KIND=JPRBT) :: T1, T2, TIMEF, tc
   INTEGER(KIND=JPIM) :: MTOL_OR_LTOM, NOFULLPEERACCESS
   INTEGER(KIND=JPIM) :: IRANK,iunit
 
   IF (LHOOK) CALL DR_HOOK('TRLTOM',0,ZHOOK_HANDLE)
- 
+  
   ITAG = MTAGLM
- 
+  
   DO J=1,NPRTRW
     ILENS(J) = D%NLTSGTB(J)*KFIELD
     IOFFS(J) = D%NSTAGT1B(D%MSTABF(J))*KFIELD
     ILENR(J) = D%NLTSFTB(J)*KFIELD
     IOFFR(J) = D%NSTAGT1B(J)*KFIELD
   ENDDO
- 
+  
   IF(NPROC > 1) THEN
     CALL GSTATS(806,0)
- 
+    !$ACC UPDATE HOST(PFBUF_IN)
+  
     CALL MPL_ALLTOALLV(PSENDBUF=PFBUF_IN,KSENDCOUNTS=ILENS,&
      & PRECVBUF=PFBUF,KRECVCOUNTS=ILENR,KSENDDISPL=IOFFS,KRECVDISPL=IOFFR,&
      & KCOMM=MPL_ALL_MS_COMM,CDSTRING='TRLTOM:')
 
     call MPI_BARRIER(MPI_COMM_WORLD,IERROR)
+    !$ACC UPDATE DEVICE(PFBUF)
   CALL GSTATS(806,1)
   ELSE
     ILEN = D%NLTSGTB(MYSETW)*KFIELD
@@ -323,7 +296,7 @@ MODULE TRLTOM_MOD
     ENDDO
     CALL GSTATS(1607,1)
   ENDIF
- 
+  
   IF (LHOOK) CALL DR_HOOK('TRLTOM',1,ZHOOK_HANDLE)
   !     ------------------------------------------------------------------
   END SUBROUTINE TRLTOM
