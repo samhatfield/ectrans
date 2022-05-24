@@ -1,5 +1,5 @@
 ! (C) Copyright 1987- ECMWF.
-! (C) Copyright 1987- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -11,26 +11,24 @@
 MODULE LTDIR_MOD
   CONTAINS
   SUBROUTINE LTDIR(KF_FS,KF_UV,KF_SCALARS,KLED2,&
- &                 PSPVOR,PSPDIV,PSPSCALAR,&
- &                 PSPSC3A,PSPSC3B,PSPSC2, &
- &                 KFLDPTRUV,KFLDPTRSC)
+   & PSPVOR,PSPDIV,PSPSCALAR,&
+   & PSPSC3A,PSPSC3B,PSPSC2, &
+   & KFLDPTRUV,KFLDPTRSC)
   
   
-  USE PARKIND1    ,ONLY : JPIM     ,JPRB
-  USE YOMHOOK     ,ONLY : LHOOK,   DR_HOOK, JPHOOK
+  USE PARKIND1  ,ONLY : JPIM     ,JPRB
+  USE YOMHOOK   ,ONLY : LHOOK,   DR_HOOK, JPHOOK
   
   USE TPM_DIM     ,ONLY : R
   USE TPM_DISTR   ,ONLY : D
   USE TPM_GEOMETRY
   
   USE PREPSNM_MOD ,ONLY : PREPSNM
-  USE PRFI2B_MOD  ,ONLY : PRFI2B
-  USE LDFOU2_MOD  ,ONLY : LDFOU2
   USE LEDIR_MOD   ,ONLY : LEDIR
   USE UVTVD_MOD
   USE UPDSP_MOD   ,ONLY : UPDSP
    
-  USE TPM_FIELDS  ,ONLY : ZAIA,ZOA1,ZOA2,ZEPSNM
+  USE TPM_FIELDS      ,ONLY : ZAIA,ZOA1,ZOA2,ZEPSNM
   
   !**** *LTDIR* - Control of Direct Legendre transform step
   
@@ -57,7 +55,6 @@ MODULE LTDIR_MOD
   !     ----------
   !         PREPSNM - prepare REPSNM for wavenumber KM
   !         PRFI2   - prepares the Fourier work arrays for model variables.
-  !         LDFOU2  - computations in Fourier space
   !         LEDIR   - direct Legendre transform
   !         UVTVD   -
   !         UPDSP   - updating of spectral arrays (fields)
@@ -142,21 +139,8 @@ MODULE LTDIR_MOD
   !*       2.    PREPARE WORK ARRAYS.
   !              --------------------
   
-  ! serial to save memory, Nils
-  
-  ! anti-symmetric
-
-  
-  CALL PRFI2B(KF_FS,ZAIA,-1)
-  CALL LDFOU2(KF_UV,ZAIA)
-  CALL LEDIR(KF_FS,KLED2,ZAIA,ZOA1,-1)
-  
-  
-  ! symmetric
-
-  CALL PRFI2B(KF_FS,ZAIA,1)
-  CALL LDFOU2(KF_UV,ZAIA)
-  CALL LEDIR(KF_FS,KLED2,ZAIA,ZOA1,1)
+  ! do the legendre transform
+  CALL LEDIR(KF_FS,KF_UV,ZOA1)
 
   !     ------------------------------------------------------------------
   
