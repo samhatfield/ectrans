@@ -1,5 +1,5 @@
 ! (C) Copyright 1995- ECMWF.
-! (C) Copyright 1995- Meteo-France.
+! (C) Copyright 2022- NVIDIA.
 ! 
 ! This software is licensed under the terms of the Apache Licence Version 2.0
 ! which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -11,7 +11,7 @@
 MODULE TRLTOG_MOD
   CONTAINS
   SUBROUTINE TRLTOG_CUDAAWARE(PGLAT,KF_FS,KF_GP,KF_SCALARS_G,KVSET,KPTRGP,&
- &                            PGP,PGPUV,PGP3A,PGP3B,PGP2)
+   &PGP,PGPUV,PGP3A,PGP3B,PGP2)
   
   !**** *trltog * - transposition of grid point data from latitudinal
   !   to column structure. This takes place between inverse
@@ -110,6 +110,7 @@ MODULE TRLTOG_MOD
   
   REAL(KIND=JPRBT),ALLOCATABLE :: ZCOMBUFS(:,:),ZCOMBUFR(:,:)
   INTEGER(KIND=JPIM)           :: ICOMR_KFFS(NPROC), ICOMS_KFFS(NPROC)
+  REAL(KIND=JPRBT) :: ZDUM(2)
   
   INTEGER(KIND=JPIM) :: ISENT    (NPROC)
   INTEGER(KIND=JPIM) :: IRCVD    (NPROC)
@@ -605,6 +606,9 @@ MODULE TRLTOG_MOD
     & CDSTRING='TRLTOG_CUDAAWARE: WAIT FOR SENDS AND RECEIVES')
   ENDIF
     
+  IF (LSYNC_TRANS) THEN
+    CALL MPL_BARRIER(CDSTRING='TRLTOG BARRIER')
+  ENDIF
   CALL GSTATS(412,1)
   #ifdef COMVERBOSE
     call MPI_BARRIER(MPI_COMM_WORLD,IERROR)
@@ -706,7 +710,7 @@ MODULE TRLTOG_MOD
   END SUBROUTINE TRLTOG_CUDAAWARE
   
   SUBROUTINE TRLTOG(PGLAT,KF_FS,KF_GP,KF_SCALARS_G,KVSET,KPTRGP,&
- &                  PGP,PGPUV,PGP3A,PGP3B,PGP2)
+   &PGP,PGPUV,PGP3A,PGP3B,PGP2)
   
   !**** *trltog * - transposition of grid point data from latitudinal
   !   to column structure. This takes place between inverse
@@ -765,10 +769,10 @@ MODULE TRLTOG_MOD
   
   
   
-  USE PARKIND_ECTRANS ,ONLY : JPIM     ,JPRB ,  JPRBT
-  USE YOMHOOK         ,ONLY : LHOOK,   DR_HOOK,  JPHOOK
+  USE PARKIND_ECTRANS  ,ONLY : JPIM     ,JPRB ,  JPRBT
+  USE YOMHOOK   ,ONLY : LHOOK,   DR_HOOK,  JPHOOK
   
-  USE MPL_MODULE      ,ONLY : MPL_RECV, MPL_SEND, MPL_WAIT, JP_NON_BLOCKING_STANDARD, MPL_MYRANK
+  USE MPL_MODULE  ,ONLY : MPL_RECV, MPL_SEND, MPL_WAIT, JP_NON_BLOCKING_STANDARD, MPL_MYRANK
   
   USE TPM_GEN         ,ONLY : NOUT
   USE TPM_DISTR       ,ONLY : D, MYSETV, MYSETW, MTAGLG,      &
@@ -800,6 +804,7 @@ MODULE TRLTOG_MOD
   ! LOCAL VARIABLES
   
   REAL(KIND=JPRBT),ALLOCATABLE :: ZCOMBUFS(:,:),ZCOMBUFR(:,:)
+  REAL(KIND=JPRBT) :: ZDUM(2)
   
   INTEGER(KIND=JPIM) :: ISENT    (NPROC)
   INTEGER(KIND=JPIM) :: IRCVD    (NPROC)
