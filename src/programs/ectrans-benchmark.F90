@@ -383,7 +383,7 @@ call gstats(1, 1)
 
 call gstats(2, 0)
 call setup_trans(ksmax=nsmax, kdgl=ndgl, kloen=nloen, ldsplit=.true., lduserpnm=luserpnm, &
-  &              lduseflt=luseflt)
+  &              lduseflt=luseflt, ldusecc=.true.)
 call gstats(2, 1)
 
 call trans_inq(kspec2=nspec2, kspec2g=nspec2g, kgptot=ngptot, kgptotg=ngptotg)
