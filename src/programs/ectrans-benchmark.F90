@@ -101,6 +101,7 @@ integer(kind=jpim) :: ndgl    ! Number of latitudes
 integer(kind=jpim), allocatable :: nloen(:) ! Number of points on each latitude
 logical :: luserpnm = .false. ! Use Belusov algorithm to compute RPNM array instead of per m
 logical :: luseflt = .false. ! Use fast legendre transforms
+logical :: lusecc = .false. ! Use Clenshaw-Curtis quadrature instead of Gaussian
 
 ! Extra inv_trans options
 logical :: lvordiv = .false. ! Compute vorticity and divergence in grid point space
@@ -110,6 +111,7 @@ logical :: luvder = .false. ! Compute East-West derivatives of U and V wind in g
 
 ! GSTATS options
 logical :: lstats = .true. ! gstats statistics
+
 logical :: ltrace_stats = .false.
 logical :: lstats_omp = .false.
 logical :: lstats_comms = .false.
@@ -210,7 +212,7 @@ endif
 
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, nlev, lvordiv, lscders, &
-  &                             luvder, luseflt, nopt_mem_tr, nproma, npromatr, verbosity, &
+  &                             luvder, luseflt, lusecc, nopt_mem_tr, nproma, npromatr, verbosity, &
   &                             ldump_values, lprint_norms, lmeminfo, nprtrv, nprtrw, ncheck, &
   &                             lpinning, icall_mode, ldump_checksums, cchecksums_path)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
@@ -383,7 +385,7 @@ call gstats(1, 1)
 
 call gstats(2, 0)
 call setup_trans(ksmax=nsmax, kdgl=ndgl, kloen=nloen, ldsplit=.true., lduserpnm=luserpnm, &
-  &              lduseflt=luseflt, ldusecc=.true.)
+  &              lduseflt=luseflt, ldusecc=lusecc)
 call gstats(2, 1)
 
 call trans_inq(kspec2=nspec2, kspec2g=nspec2g, kgptot=ngptot, kgptotg=ngptotg)
@@ -423,6 +425,7 @@ if (verbosity >= 0 .and. myproc == 1) then
   write(nout,'("nspec2     ",i0)') nspec2
   write(nout,'("nspec2g    ",i0)') nspec2g
   write(nout,'("luseflt    ",l1)') luseflt
+  write(nout,'("lusecc    ",l)') lusecc
   write(nout,'("nopt_mem_tr",i0)') nopt_mem_tr
   write(nout,'("lvordiv    ",l1)') lvordiv
   write(nout,'("lscders    ",l1)') lscders
@@ -430,6 +433,14 @@ if (verbosity >= 0 .and. myproc == 1) then
   write(nout,'(" ")')
   write(nout,'(a)') '======= End of runtime parameters ======='
   write(nout,'(" ")')
+
+  ! Check for quadrature limit
+  if (lusecc .and. (ndgl - 1 <= 2 * nsmax)) then
+    write(nout,'(a)') 'WARNING: violating Clenshaw-Curtis quadrature limit'
+    write(nout,'(a)') 'WARNING: 2*nsmax exceeds ndgl-1'
+    write(nout,'(a)') 'WARNING: transform will be inexact'
+    write(nout,'(" ")')
+  end if
 end if
 
 !===================================================================================================
@@ -1164,6 +1175,7 @@ subroutine print_help(unit)
   write(nout, "(a)") "    --uvders            Compute uv East-West derivatives (default off). Only&
     & when also --vordiv is given"
   write(nout, "(a)") "    --flt               Run with fast Legendre transforms (default off)"
+  write(nout, "(a)") "    --cc                Run with Clenshaw-Curtis quadrature and grid (default off)"
   write(nout, "(a)") "    --nproma NPROMA     Run with NPROMA (default no blocking: NPROMA=ngptot)"
   write(nout, "(a)") "    --npromatr NPROMATR Perform transforms in blocks of size NPROMATR rather&
     & than all at once"
@@ -1212,10 +1224,10 @@ end subroutine
 !===================================================================================================
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, nlev, lvordiv, &
-  &                                   lscders, luvder, luseflt, nopt_mem_tr, nproma, npromatr, &
-  &                                   verbosity, ldump_values, lprint_norms, lmeminfo, nprtrv, &
-  &                                   nprtrw, ncheck, lpinning, icall_mode, ldump_checksums, &
-  &                                   cchecksums_path)
+  &                                   lscders, luvder, luseflt, lcc, nopt_mem_tr, nproma, &
+  &                                   npromatr, verbosity, ldump_values, lprint_norms, lmeminfo, &
+  &                                   nprtrv, nprtrw, ncheck, lpinning, icall_mode, &
+  &                                   ldump_checksums, cchecksums_path)
 
 #ifdef _OPENACC
   use openacc, only: acc_init, acc_get_device_type
@@ -1231,6 +1243,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
   logical, intent(inout) :: lscders         ! Compute scalar derivatives
   logical, intent(inout) :: luvder          ! Compute uv East-West derivatives
   logical, intent(inout) :: luseflt         ! Use fast Legendre transforms
+  logical, intent(inout) :: lcc             ! use Clenshaw-Curtis quadrature
   integer, intent(inout) :: nopt_mem_tr     ! Use of heap or stack memory for ZCOMBUF arrays in transposition arrays (0 for heap, 1 for stack)
   integer, intent(inout) :: nproma          ! NPROMA
   integer, intent(inout) :: npromatr        ! block size for field-blocking
@@ -1295,6 +1308,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
       case('--scders'); lscders = .True.
       case('--uvders'); luvder = .True.
       case('--flt'); luseflt = .True.
+      case('--cc'); lcc = .True.
       case('--mem-tr'); nopt_mem_tr = get_int_value('--mem-tr', iarg)
       case('--nproma'); nproma = get_int_value('--nproma', iarg)
       case('--npromatr'); npromatr = get_int_value('--npromatr', iarg)
