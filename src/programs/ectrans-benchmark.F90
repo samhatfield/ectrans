@@ -112,6 +112,7 @@ logical :: luvder = .false. ! Compute East-West derivatives of U and V wind in g
 ! GSTATS options
 logical :: lstats = .true. ! gstats statistics
 
+logical :: linirand = .false. ! Initialize spectral arrays with random numbers
 logical :: ltrace_stats = .false.
 logical :: lstats_omp = .false.
 logical :: lstats_comms = .false.
@@ -212,9 +213,9 @@ endif
 
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, nlev, lvordiv, lscders, &
-  &                             luvder, luseflt, lusecc, nopt_mem_tr, nproma, npromatr, verbosity, &
-  &                             ldump_values, lprint_norms, lmeminfo, nprtrv, nprtrw, ncheck, &
-  &                             lpinning, icall_mode, ldump_checksums, cchecksums_path)
+  &                             luvder, luseflt, lusecc, linirand, nopt_mem_tr, nproma, npromatr, &
+  &                             verbosity, ldump_values, lprint_norms, lmeminfo, nprtrv, nprtrw, &
+  &                             ncheck, lpinning, icall_mode, ldump_checksums, cchecksums_path)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid, ndgl, nloen)
 nflevg = nlev
@@ -430,6 +431,7 @@ if (verbosity >= 0 .and. myproc == 1) then
   write(nout,'("lvordiv    ",l1)') lvordiv
   write(nout,'("lscders    ",l1)') lscders
   write(nout,'("luvder     ",l1)') luvder
+  write(nout,'("linirand  ",l)') linirand
   write(nout,'(" ")')
   write(nout,'(a)') '======= End of runtime parameters ======='
   write(nout,'(" ")')
@@ -1176,6 +1178,7 @@ subroutine print_help(unit)
     & when also --vordiv is given"
   write(nout, "(a)") "    --flt               Run with fast Legendre transforms (default off)"
   write(nout, "(a)") "    --cc                Run with Clenshaw-Curtis quadrature and grid (default off)"
+  write(nout, "(a)") "    --rand              Initialize spectral arrays with random numbers (default off)"
   write(nout, "(a)") "    --nproma NPROMA     Run with NPROMA (default no blocking: NPROMA=ngptot)"
   write(nout, "(a)") "    --npromatr NPROMATR Perform transforms in blocks of size NPROMATR rather&
     & than all at once"
@@ -1224,7 +1227,7 @@ end subroutine
 !===================================================================================================
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, nlev, lvordiv, &
-  &                                   lscders, luvder, luseflt, lcc, nopt_mem_tr, nproma, &
+  &                                   lscders, luvder, luseflt, lcc, lrand, nopt_mem_tr, nproma, &
   &                                   npromatr, verbosity, ldump_values, lprint_norms, lmeminfo, &
   &                                   nprtrv, nprtrw, ncheck, lpinning, icall_mode, &
   &                                   ldump_checksums, cchecksums_path)
@@ -1244,6 +1247,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
   logical, intent(inout) :: luvder          ! Compute uv East-West derivatives
   logical, intent(inout) :: luseflt         ! Use fast Legendre transforms
   logical, intent(inout) :: lcc             ! use Clenshaw-Curtis quadrature
+  logical, intent(inout) :: lrand   ! initialize spectral arrays with random numbers
   integer, intent(inout) :: nopt_mem_tr     ! Use of heap or stack memory for ZCOMBUF arrays in transposition arrays (0 for heap, 1 for stack)
   integer, intent(inout) :: nproma          ! NPROMA
   integer, intent(inout) :: npromatr        ! block size for field-blocking
@@ -1309,6 +1313,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
       case('--uvders'); luvder = .True.
       case('--flt'); luseflt = .True.
       case('--cc'); lcc = .True.
+      case('--rand'); lrand = .True.
       case('--mem-tr'); nopt_mem_tr = get_int_value('--mem-tr', iarg)
       case('--nproma'); nproma = get_int_value('--nproma', iarg)
       case('--npromatr'); npromatr = get_int_value('--npromatr', iarg)
@@ -1404,12 +1409,25 @@ subroutine initialize_2d_spectral_field(nsmax, field)
   integer,         intent(in)    :: nsmax    ! Spectral truncation
   real(kind=jprb), intent(inout) :: field(:) ! Field to initialize
 
-  integer :: num_my_zon_wns
-  integer, allocatable :: my_zon_wns(:)
+  if (linirand) then
+     call initialize_2d_spectral_field_with_rand(nsmax,field)
+  else
+     call initialize_2d_spectral_field_l_m(nsmax,19,4,field)
+  endif
 
-  ! Choose a spherical harmonic to initialize arrays
-  integer, parameter :: m_num = 4  ! Zonal wavenumber
-  integer, parameter :: l_num = 19  ! Total wavenumber
+end subroutine initialize_2d_spectral_field
+
+!===================================================================================================
+
+subroutine initialize_2d_spectral_field_l_m(nsmax, l_num, m_num, field)
+
+  integer,         intent(in)    :: nsmax    ! Spectral truncation
+  integer,         intent(in)    :: l_num    ! Total wavenumber
+  integer,         intent(in)    :: m_num    ! Zonal wavenumber
+  real(kind=jprb), intent(inout) :: field(:) ! Field to initialize
+
+  integer :: i, index, num_my_zon_wns
+  integer, allocatable :: my_zon_wns(:), nasm0(:)
 
   ! First initialise all spectral coefficients to zero
   field(:) = 0.0
@@ -1437,7 +1455,64 @@ subroutine initialize_2d_spectral_field(nsmax, field)
     end block
   end if
 
-end subroutine initialize_2d_spectral_field
+end subroutine initialize_2d_spectral_field_l_m
+
+!===================================================================================================
+
+subroutine initialize_2d_spectral_field_with_rand(nsmax, field)
+
+  integer,         intent(in)    :: nsmax    ! Spectral truncation
+  real(kind=jprb), intent(inout) :: field(:) ! Field to initialize
+
+  
+  integer :: i, index, num_my_zon_wns
+  integer, allocatable :: my_zon_wns(:), nasm0(:)
+  integer :: im, m_num, l_num
+  real(kind=jprb) :: randvec1(0:nsmax)
+  real(kind=jprb) :: randvec2(0:nsmax)
+  integer :: rng_seedsize
+  integer, allocatable :: rng_seed(:)
+
+  ! Initialize rng seeds to ensure reproducibility
+  call random_seed(size=rng_seedsize)
+  allocate(rng_seed(rng_seedsize))
+  rng_seed(:)=1
+  call random_seed(put=rng_seed(:))
+  ! First initialise all spectral coefficients to zero
+  field(:) = 0.0
+
+  ! Get zonal wavenumbers this rank is responsible for
+  call trans_inq(knump=num_my_zon_wns)
+  allocate(my_zon_wns(num_my_zon_wns))
+  call trans_inq(kmyms=my_zon_wns)
+
+  ! Get array of spectral array addresses (this maps (m, n=m) to array index)
+  allocate(nasm0(0:nsmax))
+  call trans_inq(kasm0=nasm0)
+  
+  ! loop over the zonal wavenumber this rank is responsible for
+  do im=1,num_my_zon_wns
+     m_num=my_zon_wns(im)
+     ! Generate a vector of random numbers ~ U[0,1]
+     call random_number(randvec1(m_num:nsmax))
+     call random_number(randvec2(m_num:nsmax))
+     do l_num=m_num, nsmax
+        ! Find out local array index of chosen spherical harmonic
+        index = nasm0(m_num) + 2 * (l_num - m_num) + 1
+        ! Set the spectral amplitude to a random number that follow -5/3 law
+        if (m_num .eq. 0) then
+          field(index  ) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec1(l_num)-0.5_jprb) ! real part?
+        else
+          field(index  ) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec1(l_num)-0.5_jprb) ! real part?
+          field(index+1) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec2(l_num)-0.5_jprb) ! imaginary part?
+        end if
+     end do
+  end do
+
+  deallocate(rng_seed)
+  return
+  
+end subroutine initialize_2d_spectral_field_with_rand
 
 !===================================================================================================
 
