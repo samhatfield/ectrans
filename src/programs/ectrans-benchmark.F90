@@ -589,7 +589,17 @@ ztloop = timef()
 ! Do spectral transform loop
 !===================================================================================================
 
+! Initiate Fujitsu Instant Performance Profiler
+write(nout,'(a)') "Starting fipp"
+call fipp_start
+
 do jstep = 1, iters
+  ! Turn off fipp for first time step, which includes expensive FFT plans
+  if (jstep == 1) then
+    write(nout,'(a)') "Stopping fipp"
+    call fipp_stop
+  endif
+
   call gstats(3,0)
   ztstep(jstep) = timef()
 
@@ -730,7 +740,17 @@ do jstep = 1, iters
     write(nout,'("Time step ",i6," took", f8.4)') jstep, ztstep(jstep)
   endif
   call gstats(3,1)
+
+  ! Restart fipp after first time step, which includes expensive FFT plans
+  if (jstep == 1) then
+    write(nout,'(a)') "Starting fipp"
+    call fipp_start
+  endif
 enddo
+
+! Finalize Fujitsu Instant Performance Profiler
+write(nout,'(a)') "Starting fipp"
+call fipp_stop
 
 ztloop = (timef() - ztloop)/1000.0_jprd
 
