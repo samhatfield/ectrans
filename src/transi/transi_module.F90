@@ -531,6 +531,14 @@ function trans_init() bind(C,name="trans_init") result(iret)
 
   trans_out = devnull( opened=close_devnull )
 
+  ! If trans_init has already been called, deallocate these arrays so we can start again
+  if (allocated(i_regions)) then
+    deallocate(i_regions)
+  endif
+  if (allocated(n_regions)) then
+    deallocate(n_regions)
+  endif
+
   if( USE_MPI ) then
     call MPL_INIT(KOUTPUT=0,KUNIT=trans_out,LDINFO=.False.)
     allocate( I_REGIONS(MPL_NPROC()) )
@@ -585,9 +593,7 @@ function trans_setup(trans) bind(C,name="trans_setup") result(iret)
   if( trans%llatlon /= 0 ) llatlon = .True.
   if( trans%llatlon == 2 ) llatlonshift = .True.
 
-  if ( .not. is_init ) then
-    err = trans_init()
-  endif
+  err = trans_init()
 
   lspeconly = .False.
   if( trans%ndgl < 0 ) then
