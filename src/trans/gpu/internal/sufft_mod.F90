@@ -20,9 +20,6 @@ MODULE SUFFT_MOD
   USE TPM_DISTR       ,ONLY : D, MYSETW
   USE TPM_GEOMETRY    ,ONLY : G
   USE TPM_FFT         ,ONLY : T
-#ifdef WITH_FFTW
-  USE TPM_FFTW        ,ONLY : TW, INIT_PLANS_FFTW
-#endif
   !
   
   IMPLICIT NONE
@@ -37,16 +34,6 @@ MODULE SUFFT_MOD
     LLP1 = NPRINTLEV>0
     LLP2 = NPRINTLEV>1
     IF(LLP1) WRITE(NOUT,*) '=== ENTER ROUTINE SUFFT ==='
-
-#ifdef WITH_FFTW
-    IF(TW%LFFTW)THEN
-      CALL INIT_PLANS_FFTW(R%NDLON)
-    ELSE
-      NULLIFY(TW%FFTW_PLANS)
-      !NULLIFY(TW%N_PLANS)
-    ENDIF
-#endif
-  
   ENDIF
   
   !     ------------------------------------------------------------------
