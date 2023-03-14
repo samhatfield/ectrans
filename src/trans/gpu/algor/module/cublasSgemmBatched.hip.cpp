@@ -35,9 +35,13 @@ rocblas_handle get_rocblas_handle() {
 }
 
 extern "C" void cublasSgemmBatched_wrapper(char transa, char transb,
-                                           int m, int n,int k, float alpha, const float *A,
-                                           int lda, int tda, const float *B, int ldb, int tdb,
-                                           float beta, float *C, int ldc, int tdc, int batchCount)
+                                           int m, int n, int k,
+                                           float alpha,
+                                           const float *A, int lda, int tda,
+                                           const float *B, int ldb, int tdb,
+                                           float beta,
+                                           float *C, int ldc, int tdc,
+                                           int batchCount)
 {
   // Determine whether either input array should be transposed
   rocblas_operation op_t1 = rocblas_operation_none, op_t2 = rocblas_operation_none;
@@ -83,27 +87,27 @@ extern "C" void cublasSgemmBatched_wrapper(char transa, char transb,
   hipFree(d_Carray_sgemm);
 }
 
-extern "C" void cublasSgemmStridedBatched_wrapper(char transa, char transb,
-                                                  int m, int n, int k,
-                                                  float alpha,
-                                                  const float *A, int lda, long long tda,
-                                                  const float *B, int ldb, long long tdb,
-                                                  float beta,
-                                                  float *C, int ldc, long long tdc,
-                                                  int batchCount)
-{
+// extern "C" void cublasSgemmStridedBatched_wrapper(char transa, char transb,
+//                                                   int m, int n, int k,
+//                                                   float alpha,
+//                                                   const float *A, int lda, int tda,
+//                                                   const float *B, int ldb, int tdb,
+//                                                   float beta,
+//                                                   float *C, int ldc, int tdc,
+//                                                   int batchCount)
+// {
+//   // Determine whether either input array should be transposed
+//   rocblas_operation op_t1 = rocblas_operation_none, op_t2 = rocblas_operation_none;
+//   if (transa=='T' || transa=='t') op_t1 = rocblas_operation_transpose;
+//   if (transb=='T' || transb=='t') op_t2 = rocblas_operation_transpose;
 
-  rocblas_operation op_t1 = rocblas_operation_none, op_t2 = rocblas_operation_none;
-  if (transa=='T' || transa=='t') op_t1 = rocblas_operation_transpose;
-  if (transb=='T' || transb=='t') op_t2 = rocblas_operation_transpose;
+//   rocblas_handle handle = get_rocblas_handle();
 
-  rocblas_handle handle = get_rocblas_handle();
-
-  ROCBLAS_CHECK(rocblas_sgemm_strided_batched(handle, op_t1, op_t2, m, n, k,
-                                              &alpha,
-                                              (const float *) A, lda, tda,
-                                              (const float *) B, ldb, tdb,
-                                              &beta,
-                                              (float*) C, ldc, tdc,
-                                              batchCount));
-}
+//   ROCBLAS_CHECK(rocblas_sgemm_strided_batched(handle, op_t1, op_t2, m, n, k,
+//                                               &alpha,
+//                                               (const float *) A, lda, tda,
+//                                               (const float *) B, ldb, tdb,
+//                                               &beta,
+//                                               (float*) C, ldc, tdc,
+//                                               batchCount));
+// }
