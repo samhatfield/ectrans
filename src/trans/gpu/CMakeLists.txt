@@ -81,6 +81,7 @@ foreach( prec sp )
 			                    roc::rocfft
                           MPI::MPI_Fortran
                           mpifort
+                          omptarget
                           #MPI::MPI_C
 			  MPI::MPI_CXX
                           #nvhpcwrapnvtx
