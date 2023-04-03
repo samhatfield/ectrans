@@ -63,10 +63,6 @@ void run_group_graph(Gemm &&gemm, int m, int *n, int *k, Real alpha,
                      int ldb, int *offsetsB, Real beta, Real *C, int ldc,
                      int *offsetsC, int batchCount, cudaStream_t stream,
                      int blas_id = -1) {
-  // we store at most one graph per "m" (# fields) and "blas id"
-  static std::unordered_map<std::pair<int, int>, cudaGraphExec_t,
-                            detail::pair_hash>
-      graphCache;
 
   // we also store A, B, and C and recreate the graph if they change
   static std::unordered_map<
@@ -87,41 +83,17 @@ void run_group_graph(Gemm &&gemm, int m, int *n, int *k, Real alpha,
     std::cout << "We have an entry with key {m=" << m << ", blas_id=" << blas_id << "}\n";
     std::cout << "Pointers: " << std::get<0>(ptrs->second) << ", " << std::get<1>(ptrs->second) << ", " << std::get<2>(ptrs->second)  << " vs. "
             << A << ", " << B << ", " << C << std::endl;
-    CUDA_CHECK(cudaGraphExecDestroy(graphCache[key]));
-    graphCache.erase(key);
     ptrCache.erase(key);
   }
 
-  auto graph = graphCache.find(key);
-  if (graph == graphCache.end()) {
-    // this graph does not exist yet
-    cudaStream_t stream;
-    CUDA_CHECK(cudaStreamCreate(&stream));
-
-    cudaGraph_t new_graph;
-    cudaGraphCreate(&new_graph, 0);
     for (int i = 0; i < batchCount; ++i) {
       if (m == 0 || n[i] == 0 || k[i] == 0) continue;
 
-      CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
       gemm(stream, m, n[i], k[i], alpha, A + offsetsA[i], lda, B + offsetsB[i],
            ldb, beta, C + offsetsC[i], ldc);
-      cudaGraph_t my_graph;
-      CUDA_CHECK(cudaStreamEndCapture(stream, &my_graph));
-      cudaGraphNode_t my_node;
-      CUDA_CHECK(cudaGraphAddChildGraphNode(&my_node, new_graph, nullptr, 0,
-                                            my_graph));
     }
-    cudaGraphExec_t instance;
-    CUDA_CHECK(cudaGraphInstantiate(&instance, new_graph, NULL, NULL, 0));
-    CUDA_CHECK(cudaStreamDestroy(stream));
-    CUDA_CHECK(cudaGraphDestroy(new_graph));
 
-    graphCache.insert({key, instance});
     ptrCache.insert({key, std::make_tuple(A, B, C)});
-  }
-
-  CUDA_CHECK(cudaGraphLaunch(graphCache.at(key), stream));
 }
 
 // stupid simple gemm calls

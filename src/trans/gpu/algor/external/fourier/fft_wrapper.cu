@@ -90,8 +90,6 @@ void execute_fft(typename Type::real *data_real,
   /* static std::unordered_map<int, void *> allocationCache; // nloens -> ptr */
   static std::unordered_map<int, std::vector<cufftHandle>>
       fftPlansCache; // kfield -> handles
-  static std::unordered_map<int, cudaGraphExec_t>
-      graphCache; // kfield -> graphs
 
   // if the pointers are changed, we need to update the graph
   static std::unordered_map<int, std::pair<real *, cmplx *>>
@@ -104,14 +102,8 @@ void execute_fft(typename Type::real *data_real,
     // delete the graph, but we keep the FFT plans, if this happens more often,
     // we should cache this...
     std::cout << "WARNING FFT: POINTER CHANGE --> THIS MIGHT BE SLOW" << std::endl;
-    CUDA_CHECK(cudaGraphExecDestroy(graphCache[kfield]));
-    graphCache.erase(kfield);
     ptrCache.erase(kfield);
   }
-
-  auto graph = graphCache.find(kfield);
-  if (graph == graphCache.end()) {
-    // this graph does not exist yet
 
     auto fftPlans = fftPlansCache.find(kfield);
     if (fftPlans == fftPlansCache.end()) {
@@ -134,21 +126,10 @@ void execute_fft(typename Type::real *data_real,
     }
     fftPlans = fftPlansCache.find(kfield);
 
-    // create a temporary stream
-    cudaStream_t stream;
-    CUDA_CHECK(cudaStreamCreate(&stream));
-
-    for (auto &plan : fftPlans->second) // set the streams
-      CUFFT_CHECK(cufftSetStream(plan, stream));
-
-    // now create the cuda graph
-    cudaGraph_t new_graph;
-    cudaGraphCreate(&new_graph, 0);
     for (int i = 0; i < nfft; ++i) {
       int offset = offsets[i];
       real *data_real_l = &data_real[kfield * offset];
       cmplx *data_complex_l = &data_complex[kfield * offset / 2];
-      CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
       if constexpr (Direction == CUFFT_R2C)
         CUFFT_CHECK(
             cufftExecR2C(fftPlans->second[i], data_real_l, data_complex_l))
@@ -161,22 +142,9 @@ void execute_fft(typename Type::real *data_real,
       else if constexpr (Direction == CUFFT_Z2D)
         CUFFT_CHECK(
             cufftExecZ2D(fftPlans->second[i], data_complex_l, data_real_l));
-      cudaGraph_t my_graph;
-      CUDA_CHECK(cudaStreamEndCapture(stream, &my_graph));
-      cudaGraphNode_t my_node;
-      CUDA_CHECK(cudaGraphAddChildGraphNode(&my_node, new_graph, nullptr, 0,
-                                            my_graph));
     }
-    cudaGraphExec_t instance;
-    CUDA_CHECK(cudaGraphInstantiate(&instance, new_graph, NULL, NULL, 0));
-    CUDA_CHECK(cudaStreamDestroy(stream));
-    CUDA_CHECK(cudaGraphDestroy(new_graph));
 
-    graphCache.insert({kfield, instance});
     ptrCache.insert({kfield, std::make_pair(data_real, data_complex)});
-  }
-
-  CUDA_CHECK(cudaGraphLaunch(graphCache.at(kfield), 0));
   CUDA_CHECK(cudaDeviceSynchronize());
 }
 extern "C" {
