@@ -17,7 +17,7 @@
 #include "cublas_v2.h"
 #include "cutlass/gemm/device/gemm.h"
 
-constexpr bool use_cutlass = true;
+constexpr bool use_cutlass = false;
 
 #define CUDA_CHECK(e)                                                          \
   {                                                                            \
