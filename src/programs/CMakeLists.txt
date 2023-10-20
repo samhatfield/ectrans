@@ -49,6 +49,7 @@ foreach( prec sp dp )
                                parkind_${prec}
                                trans_gpu_${prec}
                             )
+      target_link_options( ectrans-benchmark-gpu-${prec} PRIVATE -static-nvidia )
     endif()
   endif()
 endforeach()
