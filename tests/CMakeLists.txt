@@ -75,48 +75,48 @@ if( HAVE_TRANSI )
   ecbuild_add_test( TARGET ectrans_test_transi_program
     SOURCES   transi/transi_test_program.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_timings
     SOURCES   transi/transi_test_timings.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_lonlat
     SOURCES   transi/transi_test_lonlat.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_io
     SOURCES   transi/transi_test_io.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_memory
     SOURCES   transi/transi_test_memory.c
     LIBS      ectrans_test
     CONDITION EC_HAVE_MALLOC_H
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_memory_lonlat
     SOURCES   transi/transi_test_memory_lonlat.c
     LIBS      ectrans_test
     CONDITION EC_HAVE_MALLOC_H
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_vordiv_to_UV
     SOURCES   transi/transi_test_vordiv_to_UV.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_invtrans_adjoint
     SOURCES   transi/transi_test_invtrans_adjoint.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
   ecbuild_add_test( TARGET ectrans_test_transi_lonlat_diff_incr
     SOURCES   transi/transi_test_lonlat_diff_incr.c
     LIBS      ectrans_test
-    ENVIRONMENT TRANS_USE_MPI=0 )
+    ENVIRONMENT TRANS_USE_MPI=0 LINKER_LANGUAGE C)
 
 endif()
