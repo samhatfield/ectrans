@@ -70,14 +70,14 @@ CONTAINS
 SUBROUTINE CONSTRUCT_BUTTERFLY(PEPS,KCMAX,KM,KN,PMAT,YD_STRUCT)
 IMPLICIT NONE
 
-! Constuct butterfly
+! Construct butterfly
 
-REAL(KIND=JPRD),INTENT(IN)    :: PEPS  ! Precision
-INTEGER(KIND=JPIM),INTENT(IN) :: KCMAX ! Max number of columns in each submatrix at level 0
-INTEGER(KIND=JPIM),INTENT(IN) :: KM    ! Number of rows in matrix pmat
-INTEGER(KIND=JPIM),INTENT(IN) :: KN    ! Number of columns in matrix pmat
-REAL(KIND=JPRD),INTENT(IN)    :: PMAT(:,:)  ! original matrix
-TYPE(BUTTERFLY_STRUCT),INTENT(INOUT) :: YD_STRUCT ! Structure needed to apply butterfly
+REAL(KIND=JPRD),        INTENT(IN)    :: PEPS      ! Precision
+INTEGER(KIND=JPIM),     INTENT(IN)    :: KCMAX     ! Max number of columns in each stripe at level 0
+INTEGER(KIND=JPIM),     INTENT(IN)    :: KM        ! Number of rows in matrix pmat
+INTEGER(KIND=JPIM),     INTENT(IN)    :: KN        ! Number of columns in matrix pmat
+REAL(KIND=JPRD),        INTENT(IN)    :: PMAT(:,:) ! Input matrix
+TYPE(BUTTERFLY_STRUCT), INTENT(INOUT) :: YD_STRUCT ! Structure needed to apply butterfly
 
 REAL(KIND=JPRD),ALLOCATABLE :: ZSUB(:,:),ZBCOMB(:,:)
 INTEGER(KIND=JPIM) :: ILEVELS,JL,JJ,JK,IJ,IK
@@ -90,13 +90,18 @@ TYPE(LEV_STRUCT) :: YTEMPB(0:1)
 
 !--------------------------------------------------------------------------------
 
+YD_STRUCT%M_ORDER = KM    ! Height of input matrix
+YD_STRUCT%N_ORDER = KN    ! Width of input matrix
+YD_STRUCT%N_CMAX  = KCMAX ! Max width of "stripes" in zeroth level of butterfly division
 
-! ONWR 5.4.1
-YD_STRUCT%M_ORDER = KM
-YD_STRUCT%N_ORDER = KN
-YD_STRUCT%N_CMAX  = KCMAX
+!--------------------------------------------------------------------------------
+! Determine hierarchical structure of butterfly subdivision
+! See ONWR 5.4.1
+!--------------------------------------------------------------------------------
 
-!Find number of levels
+! Calculate number of levels of division to perform for input matrix
+! This is basically the number of times we can double the widths of the stripes of the input matrix,
+! plus one for the zeroth level
 ILEVELS = 0
 DO
   IF(2**ILEVELS >= (YD_STRUCT%N_ORDER+YD_STRUCT%N_CMAX-1) /YD_STRUCT%N_CMAX ) EXIT
@@ -106,15 +111,16 @@ YD_STRUCT%N_LEVELS = ILEVELS
 ALLOCATE(YD_STRUCT%SLEV(0:YD_STRUCT%N_LEVELS))
 
 ! Number of boxes at each level
-IJ = 1
-IK = (KN-1)/KCMAX+1
+IJ = 1 ! The zeroth level only has one row
+IK = (KN-1)/KCMAX+1 ! Divide the columns into stripes of KCMAX width
 DO JL=0,YD_STRUCT%N_LEVELS
-  YD_STRUCT%SLEV(JL)%IJ = IJ
-  YD_STRUCT%SLEV(JL)%IK = IK
-  IJ = IJ*2
-  IK = MAX((IK+1)/2,1)
+  YD_STRUCT%SLEV(JL)%IJ = IJ ! Number of boxes in the rows direction
+  YD_STRUCT%SLEV(JL)%IK = IK ! Number of boxes in the columns direction
+  IJ = IJ*2 ! Double the number of rows
+  IK = MAX((IK+1)/2,1) ! Halve the number of columns
 ENDDO
 
+! Loop over all levels, determining the coordinates of each box within the input matrix
 DO JL=0,YD_STRUCT%N_LEVELS
   ALLOCATE(YD_STRUCT%SLEV(JL)%NODE(YD_STRUCT%SLEV(JL)%IJ,YD_STRUCT%SLEV(JL)%IK))
   CALL GSTATS(1253,0)
@@ -124,19 +130,22 @@ DO JL=0,YD_STRUCT%N_LEVELS
       YNODE => YD_STRUCT%SLEV(JL)%NODE(JJ,JK)
       YNODE%ILEV = JL
       IF(JL == 0) THEN
-        YNODE%IFCOL = 1+(JK-1)*KCMAX
-        YNODE%ILCOL = MIN(JK*KCMAX,KN)
-        YNODE%ICOLS = YNODE%ILCOL - YNODE%IFCOL+1
-        YNODE%IFROW = 1
-        YNODE%ILROW = KM
+        YNODE%IFCOL = 1+(JK-1)*KCMAX ! Leftmost coordinate of this box
+        YNODE%ILCOL = MIN(JK*KCMAX,KN) ! Rightmost coordinate of this box
+        YNODE%ICOLS = YNODE%ILCOL - YNODE%IFCOL+1 ! Width of this box
+        YNODE%IFROW = 1 ! Uppermost coordinate of this box (zeroth level has only one row)
+        YNODE%ILROW = KM ! Lowermost coordinate of this box (zeroth level has only one row)
       ELSE
+        ! These are not actually needed for levels > 0
         YNODE%IFCOL = -99
         YNODE%ILCOL = -99
         YNODE%ICOLS = -99
-        ILM1 = JL-1
-        IJL  = (JJ+1)/2
-        IKL  = 2*JK-1
-        IRSTRIDE = (YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%IROWS+1)/2
+        ILM1 = JL-1 ! Get index of previous level
+        IJL  = (JJ+1)/2 ! Get row in previous level which underlies this row
+        IKL  = 2*JK-1 ! Get leftmost column in previous level which underlies this column
+        IRSTRIDE = (YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%IROWS+1)/2 ! Get height of this row
+
+        ! Get uppermost and lowermost coordinates of this row
         IF(MOD(JJ,2) == 1) THEN
           YNODE%IFROW = YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%IFROW
           YNODE%ILROW = YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%IFROW+IRSTRIDE -1
@@ -145,16 +154,18 @@ DO JL=0,YD_STRUCT%N_LEVELS
           YNODE%ILROW = YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%ILROW
         ENDIF
       ENDIF
-      YNODE%IROWS = YNODE%ILROW - YNODE%IFROW+1
-      YNODE%IROWS = MAX(YNODE%IROWS,0)
+      YNODE%IROWS = YNODE%ILROW - YNODE%IFROW+1 ! Height of this box
+      YNODE%IROWS = MAX(YNODE%IROWS,0) ! Make sure IROWS is positive
     ENDDO
   ENDDO
   !$OMP END PARALLEL DO
   CALL GSTATS(1253,1)
 ENDDO
 
-
-! ONWR 5.4.2
+!--------------------------------------------------------------------------------
+! Compress butterfly representation of input matrix
+! See ONWR 5.4.2
+!--------------------------------------------------------------------------------
 
 DO JL=0,YD_STRUCT%N_LEVELS
   IBLEV = MOD(JL,2)
@@ -172,6 +183,7 @@ DO JL=0,YD_STRUCT%N_LEVELS
       YNODE => YD_STRUCT%SLEV(JL)%NODE(JJ,JK)
       YBNODE => YTEMPB(IBLEV)%NODE(JJ,JK)
       IF(JL == 0) THEN
+        ! Extract and compress this submatrix from the input matrix
         IROWS=YNODE%IROWS
         ICOLS=YNODE%ICOLS
         ALLOCATE(ZSUB(IROWS,ICOLS))
@@ -179,15 +191,18 @@ DO JL=0,YD_STRUCT%N_LEVELS
         CALL COMPRESS_MAT(YNODE,YBNODE,PEPS,IROWS,ICOLS,ZSUB)
         DEALLOCATE(ZSUB)
       ELSE
-        ILM1 = JL-1
-        IJL  = (JJ+1)/2
-        IKL  = 2*JK-1
-        IJR  = (JJ+1)/2
-        IKR  = 2*JK
+        ILM1 = JL-1 ! Get index of previous level
+        IJL  = (JJ+1)/2 ! Get row in previous level which underlies this row
+        IKL  = 2*JK-1 ! Get leftmost column in previous level which underlies this column
+        IJR  = (JJ+1)/2 ! Get row in previous level which underlies this row
+        IKR  = 2*JK ! Get rightmost column in previous level which underlies this column
+
+        ! Get pointer to leftmost node underlying this one
         YNODEL => YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)
         YBNODEL =>  YTEMPB(IBLEVM1)%NODE(IJL,IKL)
         IRANKL = YNODEL%IRANK
         IF(IKR <= YD_STRUCT%SLEV(ILM1)%IK) THEN
+          ! Get pointer to rightmost node underlying this one
           YNODER => YD_STRUCT%SLEV(ILM1)%NODE(IJR,IKR)
           YBNODER =>  YTEMPB(IBLEVM1)%NODE(IJR,IKR)
           IRANKR = YNODER%IRANK
@@ -195,11 +210,17 @@ DO JL=0,YD_STRUCT%N_LEVELS
           YNODER => YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)
           IRANKR = 0
         ENDIF
+
         IROWS  = YNODE%IROWS
+        ! Number of columns for this node: sum of ranks of two underlying nodes
         ICOLS  = IRANKL+IRANKR
         YNODE%ICOLS=ICOLS
-        IOFFROW = YNODE%IFROW-&
-         & YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%IFROW
+
+        ! Uppermost coordinate of this row, relative to the underlying row
+        IOFFROW = YNODE%IFROW-YD_STRUCT%SLEV(ILM1)%NODE(IJL,IKL)%IFROW
+
+        ! Fill up matrix for this node with post-ID columns of two underlying nodes, then compress
+        ! again
         ALLOCATE(ZBCOMB(IROWS,ICOLS))
         CALL COMBINE_B(YBNODEL%DB,IRANKL,&
          &             YBNODER%DB,IRANKR,&
@@ -212,7 +233,7 @@ DO JL=0,YD_STRUCT%N_LEVELS
   !$OMP END PARALLEL DO
   CALL GSTATS(1253,1)
   IF(IBLEVM1 >= 0) THEN
-!Deallocate Bs no longer needed
+    ! Deallocate Bs no longer needed
     DO JJ=1,YD_STRUCT%SLEV(JL-1)%IJ
       DO JK=1,YD_STRUCT%SLEV(JL-1)%IK
         DEALLOCATE(YTEMPB(IBLEVM1)%NODE(JJ,JK)%DB)
@@ -220,7 +241,7 @@ DO JL=0,YD_STRUCT%N_LEVELS
     ENDDO
     DEALLOCATE(YTEMPB(IBLEVM1)%NODE)
   ENDIF
-! Permanently store B for last level
+  ! Permanently store B for last level
   IF(JL == YD_STRUCT%N_LEVELS) THEN
     DO JJ=1,YD_STRUCT%SLEV(JL)%IJ
       DO JK=1,YD_STRUCT%SLEV(JL)%IK
@@ -531,22 +552,18 @@ INTEGER(KIND=JPIM),INTENT(IN) :: KROWS,KCOLS
 REAL(KIND=JPRD),INTENT(IN)    :: PSUB(:,:)
 
 INTEGER(KIND=JPIM) :: JR,IRANK,ICLIST(KCOLS),JN,JM,II
-REAL(KIND=JPRD) :: ZSUB(KROWS,KCOLS),ZPNONIM(KROWS,KCOLS)
+REAL(KIND=JPRD) :: ZPNONIM(KROWS,KCOLS)
 !--------------------------------------------------------------------
 
-II = 0
-DO JN=1,KCOLS
-  DO JM=1,KROWS
-    II = II+1
-    ZSUB(JM,JN) = PSUB(JM,JN)
-  ENDDO
-ENDDO
+! Compute interpolative decomposition of matrix PSUB
+! This returns the numerical rank, IRANK, the list of columns to pick from PSUB, ICLIST, and the
+! non-identity part of the interpolation matrix, ZPNONIM
+CALL COMPUTE_ID(PEPS,KROWS,KCOLS,PSUB,IRANK,ICLIST,ZPNONIM)
 
-CALL COMPUTE_ID(PEPS,KROWS,KCOLS,ZSUB,IRANK,ICLIST,ZPNONIM)
+! Set properties of this node
 YDNODE%IRANK = IRANK
 ALLOCATE(YDNODE%PNONIM(IRANK*(KCOLS-IRANK)))
 ALLOCATE(YDNODE%ICLIST(KCOLS))
-ALLOCATE(YDBNODE%DB(KROWS,IRANK))
 YDNODE%ICLIST(:) = ICLIST(1:KCOLS)
 II = 0
 DO JN=1,KCOLS-IRANK
@@ -555,6 +572,8 @@ DO JN=1,KCOLS-IRANK
     YDNODE%PNONIM(II) = REAL(ZPNONIM(JM,JN), JPRB)
   ENDDO
 ENDDO
+
+ALLOCATE(YDBNODE%DB(KROWS,IRANK))
 DO JR=1,IRANK
   YDBNODE%DB(:,JR) = PSUB(:,ICLIST(JR))
 ENDDO
