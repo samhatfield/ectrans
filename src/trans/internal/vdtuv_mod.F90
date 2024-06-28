@@ -32,10 +32,10 @@ USE TPM_FIELDS      ,ONLY : F
 !        Explicit arguments :  KM -zonal wavenumber (input-c)
 !        --------------------  KFIELD - number of fields (input-c)
 !                              PEPSNM - REPSNM for wavenumber KM (input-c)
-!                              PVOR(NLEI1,2*KFIELD) - vorticity (input)
-!                              PDIV(NLEI1,2*KFIELD) - divergence (input)
-!                              PU(NLEI1,2*KFIELD)   - u wind (output)
-!                              PV(NLEI1,2*KFIELD)   - v wind (output)
+!                              PVOR(2*KFIELD,NLEI1) - vorticity (input)
+!                              PDIV(2*KFIELD,NLEI1) - divergence (input)
+!                              PU(2*KFIELD,NLEI1)   - u wind (output)
+!                              PV(2*KFIELD,NLEI1)   - v wind (output)
 !        Organisation within NLEI1:
 !        NLEI1 = NSMAX+4+mod(NSMAX+4+1,2)
 !                        overdimensioning
@@ -110,12 +110,12 @@ IF(KM == 0) THEN
   DO J=1,KFIELD
     IR = 2*J-1
     DO JI=2,ISMAX+3-KM
-      PU(JI,IR) = +&
-       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PVOR(JI+1,IR)-&
-       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PVOR(JI-1,IR)
-      PV(JI,IR) = -&
-       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PDIV(JI+1,IR)+&
-       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PDIV(JI-1,IR)
+      PU(IR,JI) = +&
+       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PVOR(IR,JI+1)-&
+       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PVOR(IR,JI-1)
+      PV(IR,JI) = -&
+       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PDIV(IR,JI+1)+&
+       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PDIV(IR,JI-1)
     ENDDO
   ENDDO
 
@@ -126,18 +126,18 @@ ELSE
     IR = 2*J-1
     II = IR+1
     DO JI=2,ISMAX+3-KM
-      PU(JI,IR) = -ZKM*ZLAPIN(JI)*PDIV(JI,II)+&
-       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PVOR(JI+1,IR)-&
-       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PVOR(JI-1,IR)
-      PU(JI,II) = +ZKM*ZLAPIN(JI)*PDIV(JI,IR)+&
-       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PVOR(JI+1,II)-&
-       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PVOR(JI-1,II)
-      PV(JI,IR) = -ZKM*ZLAPIN(JI)*PVOR(JI,II)-&
-       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PDIV(JI+1,IR)+&
-       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PDIV(JI-1,IR)
-      PV(JI,II) = +ZKM*ZLAPIN(JI)*PVOR(JI,IR)-&
-       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PDIV(JI+1,II)+&
-       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PDIV(JI-1,II)
+      PU(IR,JI) = -ZKM*ZLAPIN(JI)*PDIV(II,JI)+&
+       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PVOR(IR,JI+1)-&
+       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PVOR(IR,JI-1)
+      PU(II,JI) = +ZKM*ZLAPIN(JI)*PDIV(IR,JI)+&
+       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PVOR(II,JI+1)-&
+       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PVOR(II,JI-1)
+      PV(IR,JI) = -ZKM*ZLAPIN(JI)*PVOR(II,JI)-&
+       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PDIV(IR,JI+1)+&
+       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PDIV(IR,JI-1)
+      PV(II,JI) = +ZKM*ZLAPIN(JI)*PVOR(IR,JI)-&
+       &ZN(JI+1)*ZEPSNM(JI)*ZLAPIN(JI+1)*PDIV(II,JI+1)+&
+       &ZN(JI-2)*ZEPSNM(JI-1)*ZLAPIN(JI-1)*PDIV(II,JI-1)
     ENDDO
   ENDDO
 ENDIF
