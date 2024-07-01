@@ -10,7 +10,7 @@
 
 MODULE FOURIER_OUT_MOD
 CONTAINS
-SUBROUTINE FOURIER_OUT(PREEL, KFIELDS, KGL)
+SUBROUTINE FOURIER_OUT(PREEL, KFIELDS, KGL, JF)
 
 !**** *FOURIER_OUT* - Copy fourier data from local array to buffer
 
@@ -25,6 +25,7 @@ SUBROUTINE FOURIER_OUT(PREEL, KFIELDS, KGL)
 !     Explicit arguments :  PREEL - local fourier/GP array
 !     --------------------  KFIELDS - number of fields
 !                           KGL - local index of latitude we are currently on
+!                           JF - index of field we are currently on
 !
 !     Externals.  None.
 !     ----------
@@ -46,11 +47,12 @@ USE TPM_GEOMETRY, ONLY : G
 
 IMPLICIT NONE
 
-REAL(KIND=JPRB),    INTENT(IN) :: PREEL(:,:)
+REAL(KIND=JPRB),    INTENT(IN) :: PREEL(:)
 INTEGER(KIND=JPIM), INTENT(IN) :: KFIELDS
 INTEGER(KIND=JPIM), INTENT(IN) :: KGL
+INTEGER(KIND=JPIM), INTENT(IN) :: JF
 
-INTEGER(KIND=JPIM) :: JM, JF, IGLG, IPROC, IR, II, ISTA
+INTEGER(KIND=JPIM) :: JM, IGLG, IPROC, IR, II, ISTA
 
 !     ------------------------------------------------------------------
 
@@ -70,10 +72,8 @@ DO JM = 0, G%NMEN(IGLG)
   ISTA = (D%NSTAGT1B(D%MSTABF(IPROC)) + D%NPNTGTB0(JM,KGL)) * 2 * KFIELDS
 
   ! Copy all fields from FFT work array to l-to-m transposition buffer
-  DO JF = 1, KFIELDS
-    FOUBUF_IN(ISTA+2*JF-1) = PREEL(JF,IR)
-    FOUBUF_IN(ISTA+2*JF)   = PREEL(JF,II)
-  ENDDO
+  FOUBUF_IN(ISTA+2*JF-1) = PREEL(IR)
+  FOUBUF_IN(ISTA+2*JF)   = PREEL(II)
 ENDDO
 
 !     ------------------------------------------------------------------
