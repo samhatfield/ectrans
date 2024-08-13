@@ -64,7 +64,7 @@ CONTAINS
     ! Batch methods
     ! -----------------------------------------------------------------------------
 
-    FUNCTION BATCH_CONSTRUCTOR(KBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC,NPTRFS) RESULT(THIS)
+    FUNCTION BATCH_CONSTRUCTOR(KBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, IOFFGTF) RESULT(THIS)
         USE SHUFFLE_MOD,     ONLY: SHUFFLE
         USE FIELD_SPLIT_MOD, ONLY: FIELD_SPLIT
         USE TPM_GEN,         ONLY: NPROMATR, NOUT
@@ -73,14 +73,14 @@ CONTAINS
         USE TRGTOL_MOD,      ONLY: TRGTOL_PROLOG
 !        USE COMMON_MOD
         
-        INTEGER(KIND=JPIM), INTENT(IN) :: KBLK
-        INTEGER(KIND=JPIM), INTENT(IN) :: KF_GP
-        INTEGER(KIND=JPIM), INTENT(IN) :: KF_SCALARS_G
-        INTEGER(KIND=JPIM), INTENT(IN) :: KF_UV_G
+        INTEGER(KIND=JPIM),           INTENT(IN)   :: KBLK
+        INTEGER(KIND=JPIM),           INTENT(IN)   :: KF_GP
+        INTEGER(KIND=JPIM),           INTENT(IN)   :: KF_SCALARS_G
+        INTEGER(KIND=JPIM),           INTENT(IN)   :: KF_UV_G
         ! Not actually optional!
-        INTEGER(KIND=JPIM), OPTIONAL, INTENT(IN)  :: KVSETUV(:)
-        INTEGER(KIND=JPIM), OPTIONAL, INTENT(IN)  :: KVSETSC(:)
-        INTEGER(KIND=JPIM), ALLOCATABLE :: NPTRFS(:)
+        INTEGER(KIND=JPIM), OPTIONAL, INTENT(IN)   :: KVSETUV(:)
+        INTEGER(KIND=JPIM), OPTIONAL, INTENT(IN)   :: KVSETSC(:)
+        INTEGER(KIND=JPIM),           INTENT(INOUT):: IOFFGTF
 
         INTEGER :: JFLD, IST
         
@@ -123,12 +123,8 @@ CONTAINS
         ENDDO
 
         ! Compute this batch's offset into PGTF
-!        THIS%IOFFGTF = (THIS%NBLK - 1) * NPROMATR + 1
-        IF(KBLK .EQ. 1) THEN
-           NPTRFS(1) = 1
-        ENDIF
-        NPTRFS(KBLK+1) = NPTRFS(KBLK) + THIS%NF_FS
-        THIS%IOFFGTF = NPTRFS(KBLK)
+        THIS%IOFFGTF = IOFFGTF
+        IOFFGTF = IOFFGTF + THIS%NF_FS
 
         ALLOCATE(THIS%NVSET(THIS%NF_GP))
         IST = 1
