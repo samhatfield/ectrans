@@ -97,6 +97,7 @@ integer(kind=jpim) :: ndgl    ! Number of latitudes
 integer(kind=jpim), allocatable :: nloen(:) ! Number of points on each latitude
 logical :: luserpnm = .false. ! Use Belusov algorithm to compute RPNM array instead of per m
 logical :: luseflt = .false. ! Use fast legendre transforms
+integer(kind=jpim) :: npromatr = 0
 
 ! Extra inv_trans options
 logical :: lvordiv = .false. ! Compute vorticity and divergence in grid point space
@@ -192,7 +193,7 @@ luse_mpi = detect_mpirun()
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvder, &
   & luseflt, nproma, verbosity, ldump_values, lprint_norms, lmeminfo, nprtrv, nprtrw, ncheck, &
-  & icall_mode)
+  & icall_mode, npromatr)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid, ndgl, nloen)
 nflevg = nlev
@@ -347,7 +348,7 @@ if (verbosity >= 1) write(nout,'(a)')'======= Setup ecTrans ======='
 call gstats(1, 0)
 call setup_trans0(kout=nout, kerr=nerr, kprintlev=merge(2, 0, verbosity == 1),                &
   &               kprgpns=nprgpns, kprgpew=nprgpew, kprtrw=nprtrw, ldsync_trans=lsync_trans,  &
-  &               ldeq_regions=leq_regions, ldalloperm=.true., ldmpoff=.not.luse_mpi, kpromatr=20)
+  &               ldeq_regions=leq_regions, ldalloperm=.true., ldmpoff=.not.luse_mpi, kpromatr=npromatr)
 call gstats(1, 1)
 
 call gstats(2, 0)
@@ -1020,7 +1021,7 @@ end subroutine
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvder, &
   &                                   luseflt, nproma, verbosity, ldump_values, lprint_norms, &
-  &                                   lmeminfo, nprtrv, nprtrw, ncheck, icall_mode)
+  &                                   lmeminfo, nprtrv, nprtrw, ncheck, icall_mode, npromatr)
 
   integer, intent(inout) :: nsmax           ! Spectral truncation
   character(len=16), intent(inout) :: cgrid ! Spectral truncation
@@ -1044,6 +1045,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   integer, intent(inout) :: icall_mode      ! The call mode for inv_trans and dir_trans
                                             ! 1: pspvor, pspdiv, pspscalar, pgp
                                             ! 2: pspvor, pspdiv, pspsc3a, pspsc2, pgpuv, pgp3a, pgp2
+  integer, intent(inout) :: npromatr
 
   character(len=128) :: carg          ! Storage variable for command line arguments
   integer            :: iarg = 1      ! Argument index
@@ -1096,6 +1098,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
           if (icall_mode /= 1 .and. icall_mode /= 2) then
             call parsing_failed("Invalid argument for --calmode: must be 1 or 2")
           end if
+        case('--npromatr'); npromatr = get_int_value('--npromatr', iarg)
       case default
         call parsing_failed("Unrecognised argument: " // trim(carg))
 
