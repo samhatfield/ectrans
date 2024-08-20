@@ -197,7 +197,7 @@ CONTAINS
     REAL(KIND=JPRB), OPTIONAL, INTENT(IN)    :: PGP(:,:,:)
     INTEGER(KIND=JPIM),        INTENT(INOUT) :: IREQ_RECV(:)
     REAL(KIND=JPRB),           INTENT(OUT)   :: PGTF(:,:)
-    REAL(KIND=JPRB)                          :: PCOMBUFR(:,:),PCOMBUFS(:,:)
+    REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFR(:,:),PCOMBUFS(:,:)
 
     CALL TRGTOL_COMM_SEND(PGTF(THIS%IOFFGTF:THIS%IOFFGTF+THIS%NF_FS-1,:), &
       &                   THIS%PCOMBUFS, &
