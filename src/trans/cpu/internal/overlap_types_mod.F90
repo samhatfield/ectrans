@@ -235,9 +235,6 @@ CONTAINS
     REAL(KIND=JPRB), OPTIONAL, INTENT(INOUT) :: PSPDIV(:,:)
     REAL(KIND=JPRB), OPTIONAL, INTENT(INOUT) :: PSPSCALAR(:,:)
     REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFR(:,:)
-
-    print *,'myoffrecv=',this%myoffrecv
-    print *,'irecv_fld_end=',this%irecv_fld_end
     
     CALL TRGTOL_COMM_RECV(PGTF(THIS%IOFFGTF:THIS%IOFFGTF+THIS%NF_FS-1,:), &
         &                 PCOMBUFR, THIS%MYOFFRECV, &
