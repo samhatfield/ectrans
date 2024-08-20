@@ -48,9 +48,9 @@ MODULE OVERLAP_TYPES_MOD
 
 CONTAINS
 
-    ! -----------------------------------------------------------------------------
-    ! Batch methods
-    ! -----------------------------------------------------------------------------
+  ! -----------------------------------------------------------------------------
+  ! Batch methods
+  ! -----------------------------------------------------------------------------
 
   FUNCTION BATCH_CONSTRUCTOR(KBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, IOFFSEND, &
     &                        IOFFRECV, IOFFGTF, SENDCNTMAX, RECVCNTMAX) RESULT(THIS)
@@ -89,11 +89,11 @@ CONTAINS
     INTEGER(KIND=JPIM) :: NSHFSC_G(KF_GP)
     INTEGER(KIND=JPIM) :: NVSETUV(KF_GP)
     INTEGER(KIND=JPIM) :: NVSETSC(KF_GP)
-    INTEGER(KIND=JPIM), ALLOCATABLE :: ISEND_FLD_END(:),IREQ_SEND(:)
-    INTEGER(KIND=JPIM) :: ISETA, ISETB, ISETV,ISETW
+    INTEGER(KIND=JPIM), ALLOCATABLE :: ISEND_FLD_END(:), IREQ_SEND(:)
+    INTEGER(KIND=JPIM) :: ISETA, ISETB, ISETV, ISETW
 
     INTEGER :: JFLD, IST
-    INTEGER(KIND=JPIM) :: INS,IFLD,ISEND,INR,IRECV,IERR
+    INTEGER(KIND=JPIM) :: INS, ISEND, INR, IRECV
 
     TYPE(BATCH) :: THIS
 
@@ -156,6 +156,7 @@ CONTAINS
       &                THIS%NNSEND, THIS%NNRECV, THIS%NSENDTOT, THIS%NRECVTOT, THIS%NSEND, &
       &                THIS%NRECV, THIS%NINDEX, THIS%NNDOFF, THIS%NGPTRSEND)
 
+    ! Compute this batch's offsets into ZCOMBUFS and ZCOMBUFR
     THIS%MYOFFSEND = IOFFSEND
     IOFFSEND = IOFFSEND + THIS%NSENDCOUNT
     THIS%MYOFFRECV = IOFFRECV
@@ -164,35 +165,34 @@ CONTAINS
     ALLOCATE(ISEND_FLD_END(THIS%NNSEND),IREQ_SEND(THIS%NNSEND))
     ALLOCATE(THIS%IRECV_FLD_END(THIS%NNRECV))
 
-    DO INS=1,THIS%NNSEND
-      ISEND=THIS%NSEND(INS)
-      CALL PE2SET(ISEND,ISETA,ISETB,ISETW,ISETV)
-      IFLD = 0
-      DO JFLD=1,THIS%NF_GP
-        IF(THIS%NVSET(JFLD) == ISETV .OR. THIS%NVSET(JFLD) == -1 ) THEN
-          IFLD = IFLD+1
-        ENDIF
-      ENDDO
-      ISEND_FLD_END(INS) = IFLD     
-      CALL MPL_SEND(ISEND_FLD_END(INS), ISEND, KBLK, KMP_TYPE=JP_NON_BLOCKING_STANDARD, &
+    ! Loop over all tasks we are sending to
+    DO INS = 1, THIS%NNSEND
+      ! Determine V-set of this task
+      CALL PE2SET(THIS%NSEND(INS), ISETA, ISETB, ISETW, ISETV)
+
+      ! Determine how many fields this task should expect
+      ISEND_FLD_END(INS) = COUNT(THIS%NVSET(:) == ISETV .OR. THIS%NVSET(:) == -1)
+
+      ! Send that value to that task
+      CALL MPL_SEND(ISEND_FLD_END(INS), THIS%NSEND(INS), KBLK, KMP_TYPE=JP_NON_BLOCKING_STANDARD, &
         &           KREQUEST=IREQ_SEND(INS))
     ENDDO
     
-    DO INR=1,THIS%NNRECV
-      IRECV = THIS%NRECV(INR)
-      CALL MPL_RECV(THIS%IRECV_FLD_END(INR), IRECV, KBLK, KMP_TYPE=JP_BLOCKING_STANDARD)
+    ! Also receive the corresponding values from other tasks
+    DO INR = 1, THIS%NNRECV
+      CALL MPL_RECV(THIS%IRECV_FLD_END(INR), THIS%NRECV(INR), KBLK, KMP_TYPE=JP_BLOCKING_STANDARD)
     ENDDO
   END FUNCTION BATCH_CONSTRUCTOR
 
   SUBROUTINE START_COMM(THIS, PGP, IREQ_RECV,PGTF,PCOMBUFS,PCOMBUFR)
     USE TRGTOL_MOD, ONLY: TRGTOL_COMM_SEND
-    USE TPM_GEN, ONLY: NOUT
 
     CLASS(BATCH),              INTENT(INOUT) :: THIS
     REAL(KIND=JPRB), OPTIONAL, INTENT(IN)    :: PGP(:,:,:)
     INTEGER(KIND=JPIM),        INTENT(INOUT) :: IREQ_RECV(:)
     REAL(KIND=JPRB),           INTENT(OUT)   :: PGTF(:,:)
-    REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFR(:,:),PCOMBUFS(:,:)
+    REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFR(:,:)
+    REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFS(:,:)
 
     CALL TRGTOL_COMM_SEND(PGTF(THIS%IOFFGTF:THIS%IOFFGTF+THIS%NF_FS-1,:), &
       &                   PCOMBUFS, &
