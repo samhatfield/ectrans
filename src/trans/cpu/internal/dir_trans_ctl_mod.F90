@@ -94,7 +94,7 @@ USE TPM_GEN,         ONLY: NPROMATR, NOUT
 USE ABORT_TRANS_MOD, ONLY: ABORT_TRANS
 USE LINKED_LIST_M,   ONLY: LINKEDLISTNODE
 USE TPM_DISTR,       ONLY: D, NPROC, NPRTRNS
-USE TPM_TRANS,       ONLY: NGPBLKS
+USE TPM_TRANS,       ONLY: NGPBLKS,FOUBUF,FOUBUF_IN
 USE TRGTOL_MOD,      ONLY: TRGTOL_PROLOG
 IMPLICIT NONE
 
@@ -133,7 +133,7 @@ INTEGER(KIND=JPIM) :: IVSET(KF_GP)
 INTEGER(KIND=JPIM) :: KINDEX(D%NLENGTF)  
 TYPE(LINKEDLISTNODE), POINTER :: IB
 INTEGER(KIND=JPIM)  :: IOFFSEND, IOFFRECV, IOFFGTF
-INTEGER(KIND=JPIM) :: IST,NACTIVE
+INTEGER(KIND=JPIM) :: IST,NACTIVE,IBLEN
 LOGICAL :: PRODUCTIVE, COMM_COMPL
 !     ------------------------------------------------------------------
 
@@ -211,7 +211,25 @@ IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
     ALLOCATE(ZCOMBUFS(KSENDCOUNT,KNSEND))
   ENDIF
 
-  ! ================================================================================================
+IBLEN = D%NLENGT0B*2*KF_FS
+IF (ALLOCATED(FOUBUF)) THEN
+  IF (MAX(1,IBLEN) > SIZE(FOUBUF)) THEN
+    DEALLOCATE(FOUBUF)
+    ALLOCATE(FOUBUF(MAX(1,IBLEN)))
+  ENDIF
+ELSE
+  ALLOCATE(FOUBUF(MAX(1,IBLEN)))
+ENDIF
+IF (ALLOCATED(FOUBUF_IN)) THEN
+  IF (MAX(1,IBLEN) > SIZE(FOUBUF_IN)) THEN
+    DEALLOCATE(FOUBUF_IN)
+    ALLOCATE(FOUBUF_IN(MAX(1,IBLEN)))
+  ENDIF
+ELSE
+  ALLOCATE(FOUBUF_IN(MAX(1,IBLEN)))
+ENDIF
+
+! ================================================================================================
   ! Begin overlap loop
   ! ================================================================================================
 
