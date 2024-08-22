@@ -22,6 +22,15 @@ TYPE(BATCHLIST) :: ACTIVE_BATCHES
 REAL(KIND=JPRB), ALLOCATABLE :: BGTF(:,:)
 INTEGER(KIND=JPIM), ALLOCATABLE :: IREQ_RECV(:,:)
 REAL(KIND=JPRB), ALLOCATABLE :: ZCOMBUFR(:,:),ZCOMBUFS(:,:)
+integer, public, parameter :: max_comms = 2
+integer, public, parameter :: max_active_batches = 3
+integer, public, parameter :: stage_final = 2
+integer, public, parameter :: stat_waiting = 1
+integer, public, parameter :: stat_pending = 2
+integer, public, parameter :: stat_comp = 3
+integer :: ncomm_started
+integer :: nactive
+
 
 CONTAINS
 SUBROUTINE DIR_TRANS_CTL(KF_UV_G,KF_SCALARS_G,KF_GP,KF_FS,KF_UV,KF_SCALARS,&
@@ -115,6 +124,7 @@ REAL(KIND=JPRB)    ,OPTIONAL, INTENT(IN)  :: PGP3B(:,:,:,:)
 REAL(KIND=JPRB)    ,OPTIONAL, INTENT(IN)  :: PGP2(:,:,:)
 
 TYPE(BATCH) :: NEW_BATCH
+TYPE(BATCH), POINTER :: COMPLETE_COMM_BATCH
 INTEGER(KIND=JPIM) :: IBLKS, JBLK
 INTEGER(KIND=JPIM) :: NDONE, KNRECV, KRECVCOUNT, KSENDCOUNT, KNSEND
 INTEGER(KIND=JPIM), ALLOCATABLE :: KSENDTOT(:), KRECVTOT(:), KSEND(:), KRECV(:), KNDOFF(:)
@@ -123,8 +133,8 @@ INTEGER(KIND=JPIM) :: IVSET(KF_GP)
 INTEGER(KIND=JPIM) :: KINDEX(D%NLENGTF)  
 TYPE(LINKEDLISTNODE), POINTER :: IB
 INTEGER(KIND=JPIM)  :: IOFFSEND, IOFFRECV, IOFFGTF
-INTEGER(KIND=JPIM) :: IST
-
+INTEGER(KIND=JPIM) :: IST,NACTIVE
+LOGICAL :: PRODUCTIVE, COMM_COMPL
 !     ------------------------------------------------------------------
 
 ! Perform transform
@@ -176,7 +186,10 @@ IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
   CALL TRGTOL_PROLOG(KF_FS, KF_GP, IVSET, KSENDCOUNT, KRECVCOUNT, KNSEND, KNRECV, KSENDTOT, &
     &                KRECVTOT, KSEND, KRECV, KINDEX, KNDOFF, KGPTRSEND)
 
-  ! Allocate receive request handle array
+    write(6,*) 'Global sendcount=',ksendcount
+    flush(6)
+
+    ! Allocate receive request handle array
   IF (ALLOCATED(IREQ_RECV) .AND. SIZE(IREQ_RECV,1) /= KNRECV .AND. SIZE(IREQ_RECV,2) /= IBLKS) THEN
     DEALLOCATE(IREQ_RECV)
   ENDIF
@@ -207,30 +220,76 @@ IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
   IOFFGTF = 1
   JBLK = 1
   NDONE = 0
-
+  NCOMM_STARTED = 0
+  NACTIVE = 1
+  
   CALL ACTIVATE(JBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFFSEND, IOFFRECV, &
     &           IOFFGTF, KSENDCOUNT, KRECVCOUNT)
 
   DO WHILE (NDONE < IBLKS)
-    IB => ACTIVE_BATCHES%HEAD
+     comm_compl = .false.
+     productive = .false.
+     IB => ACTIVE_BATCHES%HEAD
     DO WHILE (ASSOCIATED(IB))
       SELECT TYPE (THISBATCH => IB%VALUE)
       TYPE IS (BATCH)
         IF (THISBATCH%COMM_COMPLETE(IREQ_RECV(:,THISBATCH%NBLK))) THEN
-          CALL THISBATCH%FINISH_COMM(BGTF, IREQ_RECV(:,THISBATCH%NBLK), ZCOMBUFR, PSPVOR, PSPDIV, &
-            &                        PSPSCALAR)
-          CALL ACTIVE_BATCHES%REMOVE(IB)
-          NDONE = NDONE + 1
+ !         CALL THISBATCH%FINISH_COMM(BGTF, IREQ_RECV(:,THISBATCH%NBLK), ZCOMBUFR, PSPVOR, PSPDIV, &
+!            &                        PSPSCALAR)
+          comm_compl = .true.
+          ncomm_started = ncomm_started - 1
+          complete_comm_batch => THISBATCH
+          THISBATCH%STATUS = STAT_COMP
           EXIT
         END IF
           IB => IB%NEXT
       END SELECT
     END DO
 
-    IF (JBLK < IBLKS) THEN
-      JBLK = JBLK + 1
-      CALL ACTIVATE(JBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFFSEND, IOFFRECV, &
-        &           IOFFGTF, KSENDCOUNT, KRECVCOUNT)
+    IF(COMM_COMPL) THEN
+       ! Now that one comm has completed, we can start the comm on the next batch whose comm \
+       ! is pending, if there is one
+       ib => active_batches%head
+       do while (associated(ib))
+          select type (thisBatch => ib%value)
+          type is (Batch)
+             if (thisBatch%status == stat_pending) then
+!                print *,'Starting comm for pending branch ',thisBatch%id
+                CALL THISBATCH%START_COMM(PGP, IREQ_RECV(:,THISBATCH%NBLK), BGTF, ZCOMBUFS, ZCOMBUFR)
+                ncomm_started = ncomm_started + 1
+                THISBATCH%STATUS = STAT_WAITING
+                exit
+             end if
+             ib => ib%next
+          end select
+       end do
+
+       productive = .true.
+       call complete_comm_batch%execute(BGTF, IREQ_RECV(:,COMPLETE_COMM_BATCH%NBLK), ZCOMBUFR, PSPVOR, &
+            &                PSPDIV, PSPSCALAR)
+!       if (complete_comm_batch%stage == stage_final) then
+       ib => active_batches%head
+       do while (associated(ib))
+          select type (listBatch => ib%value)
+          type is (Batch)
+             if (listBatch%nblk == complete_comm_batch%nblk) then
+                call active_batches%remove(ib)
+                exit
+             end if
+             ib => ib%next
+          end select
+       end do
+       nactive = nactive - 1
+       NDONE = NDONE + 1
+       
+    ELSE
+       
+       IF (.NOT. PRODUCTIVE .AND. NACTIVE < MAX_ACTIVE_BATCHES .AND. JBLK < IBLKS) THEN
+          JBLK = JBLK + 1
+          NACTIVE = NACTIVE +1
+          CALL ACTIVATE(JBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFFSEND, &
+               &    IOFFRECV, IOFFGTF, KSENDCOUNT, KRECVCOUNT)
+       ENDIF
     ENDIF
   ENDDO
 ELSE
@@ -267,8 +326,14 @@ SUBROUTINE ACTIVATE(N, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFF
 
   SELECT TYPE (NEW_BATCH => ACTIVE_BATCHES%TAIL%VALUE)
   TYPE IS (BATCH)
-    CALL NEW_BATCH%START_COMM(PGP, IREQ_RECV(:,N), BGTF, ZCOMBUFS, ZCOMBUFR)
+     IF(NCOMM_STARTED < MAX_COMMS) THEN
+        CALL NEW_BATCH%START_COMM(PGP, IREQ_RECV(:,N), BGTF, ZCOMBUFS, ZCOMBUFR)
+        NEW_BATCH%STATUS = STAT_WAITING
+     ELSE
+        NEW_BATCH%STATUS = STAT_PENDING
+     ENDIF
   END SELECT
+     
 END SUBROUTINE ACTIVATE
 
 END MODULE DIR_TRANS_CTL_MOD
