@@ -23,8 +23,8 @@ REAL(KIND=JPRB), ALLOCATABLE :: BGTF(:,:)
 INTEGER(KIND=JPIM), ALLOCATABLE :: IREQ_RECV(:,:)
 REAL(KIND=JPRB), ALLOCATABLE :: ZCOMBUFR(:,:),ZCOMBUFS(:,:)
 integer, public, parameter :: max_comms = 2
-integer, public, parameter :: max_active_batches = 3
-integer, public, parameter :: stage_final = 2
+integer, public, parameter :: max_active_batches = 2
+integer, public, parameter :: stage_final = 3
 integer, public, parameter :: stat_waiting = 1
 integer, public, parameter :: stat_pending = 2
 integer, public, parameter :: stat_comp = 3
@@ -251,16 +251,20 @@ ENDIF
     DO WHILE (ASSOCIATED(IB))
       SELECT TYPE (THISBATCH => IB%VALUE)
       TYPE IS (BATCH)
-        IF (THISBATCH%COMM_COMPLETE(IREQ_RECV(:,THISBATCH%NBLK))) THEN
+         IF(THISBATCH%STATUS .EQ. STAT_WAITING) THEN
+            IF (THISBATCH%COMM_COMPLETE(IREQ_RECV(:,THISBATCH%NBLK))) THEN
  !         CALL THISBATCH%FINISH_COMM(BGTF, IREQ_RECV(:,THISBATCH%NBLK), ZCOMBUFR, PSPVOR, PSPDIV, &
 !            &                        PSPSCALAR)
-          comm_compl = .true.
-          ncomm_started = ncomm_started - 1
-          complete_comm_batch => THISBATCH
-          THISBATCH%STATUS = STAT_COMP
-          EXIT
-        END IF
-          IB => IB%NEXT
+               comm_compl = .true.
+               ncomm_started = ncomm_started - 1
+               complete_comm_batch => THISBATCH
+               THISBATCH%STATUS = STAT_COMP
+               write(6,*) 'Comm complete for batch ',thisbatch%nblk,thisbatch%stage
+               flush(6)
+               EXIT
+            END IF
+         ENDIF
+         IB => IB%NEXT
       END SELECT
     END DO
 
@@ -272,7 +276,8 @@ ENDIF
           select type (thisBatch => ib%value)
           type is (Batch)
              if (thisBatch%status == stat_pending) then
-!                print *,'Starting comm for pending branch ',thisBatch%id
+                write(6,*) 'Starting comm for pending branch ',thisBatch%nblk
+                flush(6)
                 CALL THISBATCH%START_COMM(PGP, IREQ_RECV(:,THISBATCH%NBLK), BGTF, ZCOMBUFS, ZCOMBUFR)
                 ncomm_started = ncomm_started + 1
                 THISBATCH%STATUS = STAT_WAITING
@@ -283,23 +288,34 @@ ENDIF
        end do
 
        productive = .true.
-       call complete_comm_batch%execute(BGTF, IREQ_RECV(:,COMPLETE_COMM_BATCH%NBLK), ZCOMBUFR, PSPVOR, &
-            &                PSPDIV, PSPSCALAR)
-!       if (complete_comm_batch%stage == stage_final) then
-       ib => active_batches%head
-       do while (associated(ib))
-          select type (listBatch => ib%value)
-          type is (Batch)
-             if (listBatch%nblk == complete_comm_batch%nblk) then
-                call active_batches%remove(ib)
-                exit
-             end if
-             ib => ib%next
-          end select
-       end do
-       nactive = nactive - 1
-       NDONE = NDONE + 1
-       
+       call complete_comm_batch%execute(BGTF, IREQ_RECV(:,COMPLETE_COMM_BATCH%NBLK), ZCOMBUFR, &
+            & PSPVOR, PSPDIV, PSPSCALAR)
+       if (complete_comm_batch%stage == stage_final) then
+          ib => active_batches%head
+          do while (associated(ib))
+             select type (listBatch => ib%value)
+             type is (Batch)
+                if (listBatch%nblk == complete_comm_batch%nblk) then
+                   write(6,*) 'Removing batch ',complete_comm_batch%nblk
+                   flush(6)
+                   call active_batches%remove(ib)
+                   exit
+                end if
+                ib => ib%next
+             end select
+          end do
+          nactive = nactive - 1
+          NDONE = NDONE + 1
+       ELSEIF(NCOMM_STARTED < MAX_COMMS) THEN
+                ! IREQ_RECV IS NOT USED, SO PASS 1ST ELEMENT
+          write(6,*) 'Starting comm for batch ',COMPLETE_COMM_BATCH%NBLK
+          flush(6)
+          CALL COMPLETE_COMM_BATCH%START_COMM(PGP, IREQ_RECV(:,1), BGTF, ZCOMBUFS, ZCOMBUFR)
+          COMPLETE_COMM_BATCH%STATUS = STAT_WAITING
+          NCOMM_STARTED = NCOMM_STARTED + 1
+       ELSE
+          complete_comm_batch%STATUS = STAT_PENDING
+       ENDIF
     ELSE
        
        IF (.NOT. PRODUCTIVE .AND. NACTIVE < MAX_ACTIVE_BATCHES .AND. JBLK < IBLKS) THEN
@@ -347,6 +363,7 @@ SUBROUTINE ACTIVATE(N, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFF
      IF(NCOMM_STARTED < MAX_COMMS) THEN
         CALL NEW_BATCH%START_COMM(PGP, IREQ_RECV(:,N), BGTF, ZCOMBUFS, ZCOMBUFR)
         NEW_BATCH%STATUS = STAT_WAITING
+        NCOMM_STARTED = NCOMM_STARTED + 1
      ELSE
         NEW_BATCH%STATUS = STAT_PENDING
      ENDIF
