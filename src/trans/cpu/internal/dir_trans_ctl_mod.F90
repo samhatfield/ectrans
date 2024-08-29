@@ -24,7 +24,6 @@ integer, public, parameter :: max_active_batches = 5
 integer, public, parameter :: stage_final = 3
 integer, public, parameter :: stat_waiting = 1
 integer, public, parameter :: stat_pending = 2
-integer, public, parameter :: stat_comp = 3
 integer :: ncomm_started
 
 CONTAINS
@@ -255,7 +254,6 @@ IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
             COMM_COMPL = .TRUE.
             NCOMM_STARTED = NCOMM_STARTED - 1
             COMPLETE_COMM_BATCH => THISBATCH ! Keep track of which batch's communication completed
-            THISBATCH%STATUS = STAT_COMP
             EXIT
           END IF
         ENDIF

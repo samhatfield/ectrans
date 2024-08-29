@@ -8,7 +8,6 @@ MODULE OVERLAP_TYPES_MOD
 
     integer, public, parameter :: stat_waiting = 1
     integer, public, parameter :: stat_pending = 2
-    integer, public, parameter :: stat_comp = 3
 
     TYPE, PUBLIC :: BATCH
      INTEGER(KIND=JPIM) :: STATUS
