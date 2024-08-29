@@ -188,9 +188,6 @@ IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
   CALL TRGTOL_PROLOG(KF_FS, KF_GP, IVSET, KSENDCOUNT, KRECVCOUNT, KNSEND, KNRECV, KSENDTOT, &
     &                KRECVTOT, KSEND, KRECV, KINDEX, KNDOFF, KGPTRSEND)
 
-    write(6,*) 'Global sendcount=',ksendcount
-    flush(6)
-
     ! Allocate receive request handle array
   KSENDCOUNT_GLOB = SUM(KSENDTOT)
 
@@ -263,8 +260,6 @@ ENDIF
                ncomm_started = ncomm_started - 1
                complete_comm_batch => THISBATCH
                THISBATCH%STATUS = STAT_COMP
-               write(6,*) 'Comm complete for batch ',thisbatch%nblk,thisbatch%stage
-               flush(6)
                EXIT
             END IF
          ENDIF
@@ -280,8 +275,6 @@ ENDIF
           select type (thisBatch => ib%value)
           type is (Batch)
              if (thisBatch%status == stat_pending) then
-                write(6,*) 'Starting comm for pending branch ',thisBatch%nblk
-                flush(6)
                 CALL THISBATCH%START_COMM(PGP, IREQ_RECV(:,THISBATCH%NBLK), BGTF, ZCOMBUFS, ZCOMBUFR)
                 ncomm_started = ncomm_started + 1
                 THISBATCH%STATUS = STAT_WAITING
@@ -300,8 +293,6 @@ ENDIF
              select type (listBatch => ib%value)
              type is (Batch)
                 if (listBatch%nblk == complete_comm_batch%nblk) then
-                   write(6,*) 'Removing batch ',complete_comm_batch%nblk
-                   flush(6)
                    call active_batches%remove(ib)
                    exit
                 end if
@@ -312,8 +303,6 @@ ENDIF
           NDONE = NDONE + 1
        ELSEIF(NCOMM_STARTED < MAX_COMMS) THEN
                 ! IREQ_RECV IS NOT USED, SO PASS 1ST ELEMENT
-          write(6,*) 'Starting comm for batch ',COMPLETE_COMM_BATCH%NBLK
-          flush(6)
           CALL COMPLETE_COMM_BATCH%START_COMM(PGP, IREQ_RECV(:,1), BGTF, ZCOMBUFS, ZCOMBUFR)
           COMPLETE_COMM_BATCH%STATUS = STAT_WAITING
           NCOMM_STARTED = NCOMM_STARTED + 1

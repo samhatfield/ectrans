@@ -171,9 +171,6 @@ CONTAINS
     IOFFSEND = IOFFSEND + THIS%NSENDCOUNT
     THIS%MYOFFRECV = IOFFRECV
     IOFFRECV = IOFFRECV + THIS%NRECVCOUNT
-
-    write(6,*) 'Batch ',KBLK,'sendcount=',this%nsendcount,'ioffsend=',ioffsend,'kf_fs=',this%nf_fs
-    flush(6)
     
 !    ALLOCATE(ISEND_FLD_END(THIS%NNSEND),IREQ_SEND(THIS%NNSEND))
 !    ALLOCATE(THIS%IRECV_FLD_END(THIS%NNRECV))
@@ -245,8 +242,6 @@ CONTAINS
     COMM_COMPLETE = .FALSE.
 !    DO WHILE(.NOT. COMM_COMPLETE)
 !      CALL MPI_TESTALL(THIS%NNRECV, IREQ_RECV(1:THIS%NNRECV), COMM_COMPLETE, ISTATS, IERROR)
-
-    write(6,*) 'Testing comm for batch',this%nblk,', stage ',this%stage
     
     SELECT CASE(THIS%STAGE)
 
