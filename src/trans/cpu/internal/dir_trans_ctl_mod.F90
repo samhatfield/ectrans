@@ -236,20 +236,20 @@ IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
   LAST_SUBMITTED(1) = 0
   LAST_SUBMITTED(2) = 0
 
-  MAX_COMM(1) = 1
-  MAX_COMM(2) = 1
+  MAX_COMM(1) = 2
+  MAX_COMM(2) = 2
   JBLK = 1 ! This keeps track of the last activated batch
   NDONE = 0 ! This keeps track of the number of completed batches
   NCOMM_STARTED(1) = 0 ! This keeps track of the batches in an active communication
   NCOMM_STARTED(2) = 0 ! This keeps track of the batches in an active communication
   NACTIVE = 1 ! This keeps track of the overall number of active batches
 
-s1 = 'stdout.'
-write(s2,9) myproc-1
-9 format(i0)
-s3 = trim(s2)
-str = trim(s1) // s3
-open(11,file=str,form='formatted',status='unknown',action='write')
+!s1 = 'stdout.'
+!write(s2,9) myproc-1
+!9 format(i0)
+!s3 = trim(s2)
+!str = trim(s1) // s3
+!open(11,file=str,form='formatted',status='unknown',action='write')
   
   
   CALL ACTIVATE(JBLK, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFFSEND, IOFFRECV, &
@@ -269,9 +269,9 @@ open(11,file=str,form='formatted',status='unknown',action='write')
             COMM_COMPL = .TRUE.
             NCOMM_STARTED(THISBATCH%STAGE) = NCOMM_STARTED(THISBATCH%STAGE) - 1
             COMPLETE_COMM_BATCH => THISBATCH ! Keep track of which batch's communication completed
-       write(11,*) 'Completed comm. for batch ',complete_comm_BATCH%NBLK,', stage', &
-            &    complete_comm_BATCH%STAGE
-       flush(11)
+!       write(11,*) 'Completed comm. for batch ',complete_comm_BATCH%NBLK,', stage', &
+!            &    complete_comm_BATCH%STAGE
+!       flush(11)
             THISBATCH%STATUS = STAT_READY
           EXIT
           END IF
@@ -291,9 +291,9 @@ open(11,file=str,form='formatted',status='unknown',action='write')
            IF (THISBATCH%STATUS == STAT_PENDING .AND. NCOMM_STARTED(THISBATCH%STAGE) .LT. &
                 &  MAX_COMM(THISBATCH%STAGE) .AND. THISBATCH%NBLK == &
                 & LAST_SUBMITTED(THISBATCH%STAGE) + 1) THEN
-              write(11,*) 'Starting pending comm. for batch',THISBATCH%NBLK,', stage', &
-                   &             THISBATCH%STAGE
-              flush(11)
+  !            write(11,*) 'Starting pending comm. for batch',THISBATCH%NBLK,', stage', &
+  !                 &             THISBATCH%STAGE
+  !            flush(11)
               CALL THISBATCH%START_COMM(PGP, IREQ_RECV(:,THISBATCH%NBLK), BGTF, ZCOMBUFS, ZCOMBUFR)
             NCOMM_STARTED(THISBATCH%STAGE) = NCOMM_STARTED(THISBATCH%STAGE) + 1
             LAST_SUBMITTED(THISBATCH%STAGE) = LAST_SUBMITTED(THISBATCH%STAGE) + 1
@@ -324,8 +324,8 @@ open(11,file=str,form='formatted',status='unknown',action='write')
         NDONE = NDONE + 1
       ELSEIF (NCOMM_STARTED(2) < MAX_COMM(2) .AND. COMPLETE_COMM_BATCH%NBLK == LAST_SUBMITTED(2) + 1) THEN
         ! IREQ_RECV is not used, so pass 1st element
-         write(11,*) 'Starting regular comm. for batch',COMPLETE_COMM_BATCH%NBLK,', stage',COMPLETE_COMM_BATCH%STAGE
-         FLUSH(11)
+!         write(11,*) 'Starting regular comm. for batch',COMPLETE_COMM_BATCH%NBLK,', stage',COMPLETE_COMM_BATCH%STAGE
+!         FLUSH(11)
          CALL COMPLETE_COMM_BATCH%START_COMM(PGP, IREQ_RECV(:,1), BGTF, ZCOMBUFS, ZCOMBUFR)
         NCOMM_STARTED(2) = NCOMM_STARTED(2) + 1
         LAST_SUBMITTED(2) = LAST_SUBMITTED(2) + 1
@@ -346,7 +346,7 @@ ELSE
 
 ENDIF
 
-close(11)
+!close(11)
 !     ------------------------------------------------------------------
 
 END SUBROUTINE DIR_TRANS_CTL
@@ -378,8 +378,8 @@ SUBROUTINE ACTIVATE(N, KF_GP, KF_SCALARS_G, KF_UV_G, KVSETUV, KVSETSC, PGP, IOFF
   SELECT TYPE (NEW_BATCH => ACTIVE_BATCHES%TAIL%VALUE)
   TYPE IS (BATCH)
     IF (NCOMM_STARTED(1) < MAX_COMM(1)) THEN
-       write(11,*) 'Starting regular comm. for batch',N,', stage 1'
-       FLUSH(11)
+!       write(11,*) 'Starting regular comm. for batch',N,', stage 1'
+!       FLUSH(11)
       CALL NEW_BATCH%START_COMM(PGP, IREQ_RECV(:,N), BGTF, ZCOMBUFS, ZCOMBUFR)
       NCOMM_STARTED(1) = NCOMM_STARTED(1) + 1
       LAST_SUBMITTED(1) = LAST_SUBMITTED(1) + 1

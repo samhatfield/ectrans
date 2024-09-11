@@ -221,8 +221,8 @@ CONTAINS
 
        CASE (2)
 
-          write(11,*) 'nf_fs=',this%nf_fs
-          flush(11)
+!          write(11,*) 'nf_fs=',this%nf_fs
+!          flush(11)
           
        CALL LTDIR_CTL_SEND(THIS%IOFFGTF,THIS%NF_FS,THIS%A2AREQ)
        
