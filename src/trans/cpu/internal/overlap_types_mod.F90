@@ -8,7 +8,7 @@ MODULE OVERLAP_TYPES_MOD
 
     integer, public, parameter :: stat_waiting = 1
     integer, public, parameter :: stat_pending = 2
-    integer, public, parameter :: stat_comp = 3
+    integer, public, parameter :: stat_ready = 3
 
     TYPE, PUBLIC :: BATCH
      INTEGER(KIND=JPIM) :: STATUS
@@ -106,7 +106,7 @@ CONTAINS
     TYPE(BATCH) :: THIS
 
     THIS%STAGE = 1
-    THIS%STATUS = STAT_WAITING
+    THIS%STATUS = STAT_PENDING
     THIS%NBLK = KBLK
 
     CALL SHUFFLE(KF_UV_G, KF_SCALARS_G, NSHFUV_G, NVSETUV, NSHFSC_G, &
@@ -171,9 +171,6 @@ CONTAINS
     IOFFSEND = IOFFSEND + THIS%NSENDCOUNT
     THIS%MYOFFRECV = IOFFRECV
     IOFFRECV = IOFFRECV + THIS%NRECVCOUNT
-
-    write(6,*) 'Batch ',KBLK,'sendcount=',this%nsendcount,'ioffsend=',ioffsend,'kf_fs=',this%nf_fs
-    flush(6)
     
 !    ALLOCATE(ISEND_FLD_END(THIS%NNSEND),IREQ_SEND(THIS%NNSEND))
 !    ALLOCATE(THIS%IRECV_FLD_END(THIS%NNRECV))
@@ -224,9 +221,14 @@ CONTAINS
 
        CASE (2)
 
+          write(11,*) 'nf_fs=',this%nf_fs
+          flush(11)
+          
        CALL LTDIR_CTL_SEND(THIS%IOFFGTF,THIS%NF_FS,THIS%A2AREQ)
        
     END SELECT
+
+    THIS%STATUS = STAT_WAITING
     
   END SUBROUTINE START_COMM
 
@@ -245,8 +247,6 @@ CONTAINS
     COMM_COMPLETE = .FALSE.
 !    DO WHILE(.NOT. COMM_COMPLETE)
 !      CALL MPI_TESTALL(THIS%NNRECV, IREQ_RECV(1:THIS%NNRECV), COMM_COMPLETE, ISTATS, IERROR)
-
-    write(6,*) 'Testing comm for batch',this%nblk,', stage ',this%stage
     
     SELECT CASE(THIS%STAGE)
 
@@ -302,6 +302,7 @@ CONTAINS
     END SELECT
 
     THIS%STAGE = THIS%STAGE + 1
+    THIS%STATUS = STAT_PENDING
     
   END SUBROUTINE EXECUTE
 
