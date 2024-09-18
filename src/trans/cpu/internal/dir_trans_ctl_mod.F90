@@ -142,7 +142,7 @@ WRITE(NOUT,*) "KF_FS = ", KF_FS
 WRITE(NOUT,*) "KF_UV = ", KF_UV
 WRITE(NOUT,*) "KF_SCALARS = ", KF_SCALARS
 
-IF (NPROMATR > 0 .AND. KF_GP > NPROMATR) THEN
+IF (NPROMATR > 0) THEN
 
   ! Determine number of batches
   IBLKS = (KF_GP - 1) / NPROMATR + 1
