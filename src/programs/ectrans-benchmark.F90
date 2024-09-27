@@ -26,7 +26,8 @@ use oml_mod ,only : oml_max_threads
 use mpl_module
 use yomgstats, only: jpmaxstat, gstats_lstats => lstats
 use yomhook, only : dr_hook_init
-
+USE LINKED_LIST_M, ONLY: TCOMM1,TCOMM2,TCOMP1,TCOMP2,tcount,t_event,t_batch,t_stage,t_type
+USE TIMING_MOD, ONLY: GET_TIME
 implicit none
 
 ! Number of points in top/bottom latitudes
@@ -112,7 +113,7 @@ logical :: lstats_omp = .false.
 logical :: lstats_comms = .false.
 logical :: lbarrier_stats = .false.
 logical :: lbarrier_stats2 = .false.
-logical :: ldetailed_stats = .false.
+logical :: ldetailed_stats = .true.
 logical :: lstats_alloc = .false.
 logical :: lsyncstats = .false.
 logical :: lstatscpu = .false.
@@ -173,6 +174,8 @@ integer(kind=jpim) :: ierr
 integer :: icall_mode = 1
 integer :: inum_wind_fields, inum_sc_3d_fields, inum_sc_2d_fields, itotal_fields
 integer :: ipgp_start, ipgp_end, ipgpuv_start, ipgpuv_end
+integer :: iblks,kf_gp
+real(8) :: t0
 
 !===================================================================================================
 
@@ -217,6 +220,13 @@ call dr_hook_init()
 
 if( lstats ) call gstats(0,0)
 ztinit = timef()
+t0 = get_time()
+
+allocate(t_event((iters+2)*40))
+allocate(t_batch((iters+2)*40))
+allocate(t_stage((iters+2)*40))
+allocate(t_type((iters+2)*40))
+tcount = 1
 
 ! only output to stdout on pe 1
 if (nproc > 1) then
@@ -641,12 +651,12 @@ do jstep = 1, iters+2
   call gstats(5,0)
   if (icall_mode == 1) then
     call dir_trans(pgp=zgp(:,ipgp_start:ipgp_end,:), pspvor=zspvor, pspdiv=zspdiv, &
-      &            pspscalar=zspscalar, kvsetuv=ivset, kvsetsc=ivsetsc, kproma=nproma)
+      &            pspscalar=zspscalar, kvsetuv=ivset, kvsetsc=ivsetsc, kproma=nproma,if_gp=kf_gp)
   else
     call dir_trans(pgpuv=zgpuv(:,:,ipgpuv_start:ipgpuv_end,:), &
       &            pgp3a=zgp3a(:,:,1:nfld,:), pgp2=zgp2(:,1:1,:), &
       &            pspvor=zspvor, pspdiv=zspdiv, pspsc3a=zspsc3a, pspsc2=zspsc2, &
-      &            kvsetuv=ivset, kvsetsc2=ivsetsc2, kvsetsc3a=ivset, kproma=nproma)
+      &            kvsetuv=ivset, kvsetsc2=ivsetsc2, kvsetsc3a=ivset, kproma=nproma,if_gp=kf_gp)
   endif
   call gstats(5,1)
   ztstep2(jstep) = (timef() - ztstep2(jstep))/1000.0_jprd
@@ -874,6 +884,25 @@ write(nout,'("loop (s): ",f8.4)') ztloop
 write(nout,'(" ")')
 write(nout,'(a)') '======= End of time step stats ======='
 write(nout,'(" ")')
+
+
+do i=1,tcount-1
+   select case(t_type(i))
+     case(TCOMM1)
+       WRITE(1000+MYPROC,*) "COMM", 1,t_batch(i),t_stage(i),t_event(i)-t0
+     case(TCOMM2)
+       WRITE(1000+MYPROC,*) "COMM", 2,t_batch(i),t_stage(i),t_event(i)-t0
+
+     case(TCOMP1)
+       WRITE(1000+MYPROC,*) "COMP", 1,t_batch(i),t_stage(i),t_event(i)-t0
+
+     case(TCOMP2)
+       WRITE(1000+MYPROC,*) "COMP", 2,t_batch(i),t_stage(i),t_event(i)-t0
+
+   end select
+end do
+   
+
 
 if (lstack) then
   ! Gather stack usage statistics

@@ -13,6 +13,13 @@
 MODULE LINKED_LIST_M
     USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: INT32
   IMPLICIT NONE
+  real(8), public, allocatable :: t_event(:)
+  integer, public, allocatable :: t_type(:),t_batch(:),t_stage(:)
+  integer, public :: tcount
+  integer, public, parameter :: TCOMM1 = 1
+  integer, public, parameter :: TCOMM2 = 2
+  integer, public, parameter :: TCOMP1 = 3
+  integer, public, parameter :: TCOMP2 = 4
   PRIVATE
 
   !> custom types

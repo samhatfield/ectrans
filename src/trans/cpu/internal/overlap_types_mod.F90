@@ -1,14 +1,14 @@
 MODULE OVERLAP_TYPES_MOD
-  USE LINKED_LIST_M, ONLY: LINKEDLIST
+  USE LINKED_LIST_M, ONLY: LINKEDLIST,TCOMM1,TCOMM2,TCOMP1,TCOMP2,tcount,t_event,t_batch,t_stage,t_type
   USE PARKIND1,      ONLY: JPIM, JPRB
 !  USE COMMON
   
   IMPLICIT NONE
+
   PRIVATE
 
     integer, public, parameter :: stat_waiting = 1
     integer, public, parameter :: stat_pending = 2
-    integer, public, parameter :: stat_ready = 3
 
     TYPE, PUBLIC :: BATCH
      INTEGER(KIND=JPIM) :: STATUS
@@ -54,6 +54,7 @@ MODULE OVERLAP_TYPES_MOD
     PROCEDURE :: APPEND => APPEND_BATCH
   END TYPE BATCHLIST
 
+  
 CONTAINS
 
   ! -----------------------------------------------------------------------------
@@ -171,32 +172,13 @@ CONTAINS
     IOFFSEND = IOFFSEND + THIS%NSENDCOUNT
     THIS%MYOFFRECV = IOFFRECV
     IOFFRECV = IOFFRECV + THIS%NRECVCOUNT
-    
-!    ALLOCATE(ISEND_FLD_END(THIS%NNSEND),IREQ_SEND(THIS%NNSEND))
-!    ALLOCATE(THIS%IRECV_FLD_END(THIS%NNRECV))
-
-    ! Loop over all tasks we are sending to
-!    DO INS = 1, THIS%NNSEND
-      ! Determine V-set of this task
-!      CALL PE2SET(THIS%NSEND(INS), ISETA, ISETB, ISETW, ISETV)
-
-      ! Determine how many fields this task should expect
-!      ISEND_FLD_END(INS) = COUNT(THIS%NVSET(:) == ISETV .OR. THIS%NVSET(:) == -1)
-
-      ! Send that value to that task
-!      CALL MPL_SEND(ISEND_FLD_END(INS), THIS%NSEND(INS), KBLK, KMP_TYPE=JP_NON_BLOCKING_STANDARD, &
-!        &           KREQUEST=IREQ_SEND(INS))
-!    ENDDO
-    
-    ! Also receive the corresponding values from other tasks
-!    DO INR = 1, THIS%NNRECV
-!      CALL MPL_RECV(THIS%IRECV_FLD_END(INR), THIS%NRECV(INR), KBLK, KMP_TYPE=JP_BLOCKING_STANDARD)
-!    ENDDO
   END FUNCTION BATCH_CONSTRUCTOR
 
   SUBROUTINE START_COMM(THIS, PGP, IREQ_RECV,PGTF,PCOMBUFS,PCOMBUFR)
     USE TRGTOL_MOD, ONLY: TRGTOL_COMM_SEND
     USE LTDIR_CTL_MOD, ONLY: LTDIR_CTL_SEND
+    USE TPM_DISTR, ONLY: MYPROC
+    USE TIMING_MOD, ONLY: GET_TIME
     
     CLASS(BATCH),              INTENT(INOUT) :: THIS
     REAL(KIND=JPRB), OPTIONAL, INTENT(IN)    :: PGP(:,:,:)
@@ -205,72 +187,69 @@ CONTAINS
     REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFR(:,:)
     REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFS(:,:)
 
-    SELECT CASE(THIS%STAGE)
-
-       CASE (1)
+!    WRITE(1000+MYPROC,*) "COMM", 1, THIS%NBLK, THIS%STAGE,  GET_TIME()
+    t_event(tcount) = get_time()
+    t_batch(tcount) = this%nblk
+    t_stage(tcount) = this%stage
+    t_type(tcount) = TCOMM1
+    tcount = tcount +1
     
-       CALL TRGTOL_COMM_SEND(PGTF(THIS%IOFFGTF:THIS%IOFFGTF+THIS%NF_FS-1,:), &
-      &                   PCOMBUFS, &
-      &                   PCOMBUFR, &
-      &                   THIS%MYOFFSEND, THIS%MYOFFRECV, &
-      &                   THIS%NF_FS, THIS%NF_GP, THIS%NF_SCALARS_G, THIS%NVSET, THIS%NSENDCOUNT, &
-      &                   THIS%NRECVCOUNT, THIS%NNSEND, THIS%NNRECV, THIS%NSENDTOT, &
-      &                   THIS%NRECVTOT, THIS%NSEND, THIS%NRECV, THIS%NINDEX, THIS%NNDOFF, &
-      &                   THIS%NGPTRSEND, IREQ_RECV, &
-      &                   THIS%NPTRGP, PGP)
+    SELECT CASE(THIS%STAGE)
+      CASE (1)
+        CALL TRGTOL_COMM_SEND(PGTF(THIS%IOFFGTF:THIS%IOFFGTF+THIS%NF_FS-1,:), PCOMBUFS, PCOMBUFR, &
+          &                   THIS%MYOFFSEND, THIS%MYOFFRECV, THIS%NF_FS, THIS%NF_GP, &
+          &                   THIS%NF_SCALARS_G, THIS%NVSET, THIS%NSENDCOUNT, THIS%NRECVCOUNT, &
+          &                   THIS%NNSEND, THIS%NNRECV, THIS%NSENDTOT, THIS%NRECVTOT, THIS%NSEND, &
+          &                   THIS%NRECV, THIS%NINDEX, THIS%NNDOFF, THIS%NGPTRSEND, IREQ_RECV, &
+          &                   THIS%NPTRGP, PGP)
 
-       CASE (2)
-
-!          write(11,*) 'nf_fs=',this%nf_fs
-!          flush(11)
-          
-       CALL LTDIR_CTL_SEND(THIS%IOFFGTF,THIS%NF_FS,THIS%A2AREQ)
-       
+      CASE (2)
+        CALL LTDIR_CTL_SEND(THIS%IOFFGTF,THIS%NF_FS,THIS%A2AREQ)
     END SELECT
 
     THIS%STATUS = STAT_WAITING
-    
   END SUBROUTINE START_COMM
 
   FUNCTION COMM_COMPLETE(THIS, IREQ_RECV)
-    USE MPI,     ONLY: MPI_STATUS_IGNORE, MPI_TESTALL,MPI_STATUSES_IGNORE
+    USE MPI, ONLY: MPI_STATUS_IGNORE, MPI_TESTALL,MPI_STATUSES_IGNORE
+    USE TPM_DISTR, ONLY: MYPROC
+    USE TIMING_MOD, ONLY: GET_TIME
 
     CLASS(BATCH),       INTENT(INOUT) :: THIS
     INTEGER(KIND=JPIM), INTENT(INOUT) :: IREQ_RECV(:)
 
     LOGICAL :: COMM_COMPLETE
-!    INTEGER(KIND=JPIM), ALLOCATABLE :: ISTATS(:,:)
     INTEGER(KIND=JPIM) :: IERROR
 
-!    ALLOCATE(ISTATS(MPI_STATUS_SIZE,THIS%NNRECV))
-
     COMM_COMPLETE = .FALSE.
-!    DO WHILE(.NOT. COMM_COMPLETE)
-!      CALL MPI_TESTALL(THIS%NNRECV, IREQ_RECV(1:THIS%NNRECV), COMM_COMPLETE, ISTATS, IERROR)
-    
+
     SELECT CASE(THIS%STAGE)
-
        CASE (1)
-
-       CALL MPI_TESTALL(THIS%NNRECV, IREQ_RECV(1:THIS%NNRECV), COMM_COMPLETE, &
-            &  MPI_STATUSES_IGNORE, IERROR)
+        CALL MPI_TESTALL(THIS%NNRECV, IREQ_RECV(1:THIS%NNRECV), COMM_COMPLETE, &
+              &  MPI_STATUSES_IGNORE, IERROR)
 
        CASE (2)
-
-       CALL MPI_TEST(THIS%A2AREQ,COMM_COMPLETE,MPI_STATUS_IGNORE,IERROR)
-
+        CALL MPI_TEST(THIS%A2AREQ,COMM_COMPLETE,MPI_STATUS_IGNORE,IERROR)
     END SELECT
-    
-!    ENDDO
+
+    IF (COMM_COMPLETE) then
+       t_event(tcount) = get_time()
+       t_batch(tcount) = this%nblk
+       t_stage(tcount) = this%stage
+       t_type(tcount) = TCOMM2
+       tcount = tcount +1
+    endif
+!     WRITE(1000+MYPROC,*) "COMM", 2, THIS%NBLK, THIS%STAGE,  GET_TIME()
   END FUNCTION COMM_COMPLETE
 
   SUBROUTINE EXECUTE(THIS, PGTF, IREQ_RECV, PCOMBUFR, PSPVOR, PSPDIV, PSPSCALAR)
     USE TRGTOL_MOD,    ONLY: TRGTOL_COMM_RECV
     USE FTDIR_CTL_MOD, ONLY: FTDIR_CTL_COMP
     USE LTDIR_CTL_MOD, ONLY: LTDIR_CTL_SEND,LTDIR_CTL_COMP
-    USE TPM_TRANS,       ONLY: FOUBUF_IN
-    USE TPM_DISTR, ONLY: D
-    
+    USE TPM_TRANS, ONLY: FOUBUF_IN
+    USE TPM_DISTR, ONLY: D, MYPROC
+    USE TIMING_MOD, ONLY: GET_TIME
+
     CLASS(BATCH),              INTENT(INOUT) :: THIS
     REAL(KIND=JPRB),           INTENT(INOUT) :: PGTF(:,:)
     INTEGER(KIND=JPIM),        INTENT(INOUT) :: IREQ_RECV(:)
@@ -278,11 +257,18 @@ CONTAINS
     REAL(KIND=JPRB), OPTIONAL, INTENT(INOUT) :: PSPDIV(:,:)
     REAL(KIND=JPRB), OPTIONAL, INTENT(INOUT) :: PSPSCALAR(:,:)
     REAL(KIND=JPRB),           INTENT(INOUT) :: PCOMBUFR(:,:)
+
     INTEGER(KIND=JPIM) :: IST,IEN
-    
+
+!    WRITE(1000+MYPROC,*) "COMP", 1, THIS%NBLK, THIS%STAGE,  GET_TIME()
+    t_event(tcount) = get_time()
+    t_batch(tcount) = this%nblk
+    t_stage(tcount) = this%stage
+    t_type(tcount) = TCOMP1
+    tcount = tcount +1
+
     SELECT CASE (THIS%STAGE)
     CASE (1)
-
        CALL TRGTOL_COMM_RECV(PGTF(THIS%IOFFGTF:THIS%IOFFGTF+THIS%NF_FS-1,:), &
         &                 PCOMBUFR, THIS%MYOFFRECV, &
         &                 THIS%IRECV_FLD_END, &
@@ -294,16 +280,20 @@ CONTAINS
          &     FOUBUF_IN(IST:IEN),THIS%NF_FS)
 
     CASE (2)
-
        CALL LTDIR_CTL_COMP(THIS%IOFFGTF,THIS%NF_FS, THIS%NF_UV, THIS%NF_SCALARS,THIS%A2AREQ, &
          &     PSPVOR=PSPVOR, PSPDIV=PSPDIV, PSPSCALAR=PSPSCALAR, KFLDPTRUV=THIS%NPTRSPUV, &
          &     KFLDPTRSC=THIS%NPTRSPSC)
-
     END SELECT
+
+!    WRITE(1000+MYPROC,*) "COMP", 2, THIS%NBLK, THIS%STAGE,  GET_TIME()
+    t_event(tcount) = get_time()
+    t_batch(tcount) = this%nblk
+    t_stage(tcount) = this%stage
+    t_type(tcount) = TCOMP2
+    tcount = tcount +1
 
     THIS%STAGE = THIS%STAGE + 1
     THIS%STATUS = STAT_PENDING
-    
   END SUBROUTINE EXECUTE
 
   ! -----------------------------------------------------------------------------
