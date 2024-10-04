@@ -26,7 +26,8 @@ use oml_mod ,only : oml_max_threads
 use mpl_module
 use yomgstats, only: jpmaxstat, gstats_lstats => lstats
 use yomhook, only : dr_hook_init
-use timing_mod, only: get_time, tcomm1, tcomm2, tcomp1, tcomp2, tcount, t_event, t_batch, t_stage, t_type
+use timing_mod, only: get_time, tcomm1, tcomm2, tcomm3, tcomp1, tcomp2, tcount, t_event, t_batch, &
+  &                   t_stage, t_type
 
 implicit none
 
@@ -891,10 +892,12 @@ do i = 1, tcount - 1
        write(1000+myproc,*) "COMM", 1, t_batch(i), t_stage(i), t_event(i) - t0
      case(tcomm2)
        write(1000+myproc,*) "COMM", 2, t_batch(i), t_stage(i), t_event(i) - t0
+     case(tcomm3)
+       write(1000+myproc,*) "COMM", 3, t_batch(i), t_stage(i), t_event(i) - t0
      case(tcomp1)
        write(1000+myproc,*) "COMP", 1, t_batch(i), t_stage(i), t_event(i) - t0
      case(tcomp2)
-       write(1000+myproc,*) "COMP", 2, t_batch(i), t_stage(i), t_event(i) - t0
+       write(1000+myproc,*) "COMP", 3, t_batch(i), t_stage(i), t_event(i) - t0
    end select
 end do
 

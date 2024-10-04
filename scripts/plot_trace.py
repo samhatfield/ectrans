@@ -43,8 +43,8 @@ for df_task in df_list:
             start_time = 1000.0*(row["time"] - min_time) # Compute start time of this event in ms
             task = row["task"]
 
-            # Find matching closing event (step = 2)
-            end_row_bool = (df_task["event"] == event) & (df_task["step"] == 2) & \
+            # Find matching closing event (step = 3)
+            end_row_bool = (df_task["event"] == event) & (df_task["step"] == 3) & \
                            (df_task["batch"] == batch) & (df_task["stage"] == stage)
 
             # Compute duration of this event in ms
