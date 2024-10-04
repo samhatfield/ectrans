@@ -55,10 +55,21 @@ for df_task in df_list:
                                     facecolor=colors[stage-1])
             ax.add_patch(rect)
 
+            # Plot mid point (i.e. point at which waiting actually begins)
+            if event == "COMM":
+                mid_row_bool = (df_task["event"] == "COMM") & (df_task["step"] == 2) & \
+                               (df_task["batch"] == batch) & (df_task["stage"] == stage)
+                midpoint = 1000.0*(df_task[index:][mid_row_bool].iloc[0]["time"] - min_time)
+                if task == 1:
+                    print(f"Plotting line at {midpoint}")
+                ax.plot([midpoint, midpoint],
+                        [(task - 1) * num_batches + batch, (task - 1) * num_batches + batch + 1],
+                        solid_capstyle="butt", color="gray")
+
 # Plot task labels
 task_label_x = 1.13 * 1000.0 * (max_time - min_time)
 for task in range(num_tasks):
-    ax.plot([task_label_x, task_label_x], [task * num_batches + 1, (task + 1) * num_batches],
+    ax.plot([task_label_x, task_label_x], [task * num_batches + 1, (task + 1) * num_batches + 1],
             marker='o', clip_on=False, color="silver")
     ax.text(task_label_x*1.018, task * num_batches + 1 + num_batches/2, f"Task {task+1}",
             horizontalalignment="center", verticalalignment="center", rotation="vertical")
