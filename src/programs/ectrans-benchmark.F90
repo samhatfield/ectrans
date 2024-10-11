@@ -177,6 +177,13 @@ integer :: inum_wind_fields, inum_sc_3d_fields, inum_sc_2d_fields, itotal_fields
 integer :: ipgp_start, ipgp_end, ipgpuv_start, ipgpuv_end
 real(jprd) :: t0
 
+interface
+subroutine start_MPI_helper() bind(C, name="start_MPI_helper_")
+end subroutine
+subroutine stop_MPI_helper() bind(C, name="stop_MPI_helper_")
+end subroutine
+end interface
+
 !===================================================================================================
 
 #include "setup_trans0.h"
@@ -213,6 +220,8 @@ else
   mpl_comm = -1
 endif
 nthread = oml_max_threads()
+
+call start_MPI_helper
 
 call dr_hook_init()
 
@@ -944,6 +953,8 @@ endif
 !===================================================================================================
 ! Finalize MPI
 !===================================================================================================
+
+call stop_MPI_helper
 
 if (luse_mpi) then
   call mpl_end(ldmeminfo=.false.)
