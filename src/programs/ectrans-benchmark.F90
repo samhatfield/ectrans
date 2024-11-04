@@ -99,7 +99,7 @@ integer(kind=jpim) :: ndgl    ! Number of latitudes
 integer(kind=jpim), allocatable :: nloen(:) ! Number of points on each latitude
 logical :: luserpnm = .false. ! Use Belusov algorithm to compute RPNM array instead of per m
 logical :: luseflt = .false. ! Use fast legendre transforms
-integer(kind=jpim) :: npromatr = 0
+integer(kind=jpim) :: npromatr = 1
 
 ! Extra inv_trans options
 logical :: lvordiv = .false. ! Compute vorticity and divergence in grid point space
@@ -1138,7 +1138,10 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
           if (icall_mode /= 1 .and. icall_mode /= 2) then
             call parsing_failed("Invalid argument for --calmode: must be 1 or 2")
           end if
-        case('--npromatr'); npromatr = get_int_value('--npromatr', iarg)
+      case('--npromatr'); npromatr = get_int_value('--npromatr', iarg)
+          if (npromatr < 1) then
+            call parsing_failed("Invalid argument for --npromatr: must be greater than 0")
+          end if
       case default
         call parsing_failed("Unrecognised argument: " // trim(carg))
 
