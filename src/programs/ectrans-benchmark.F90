@@ -176,6 +176,7 @@ integer :: icall_mode = 1
 integer :: inum_wind_fields, inum_sc_3d_fields, inum_sc_2d_fields, itotal_fields
 integer :: ipgp_start, ipgp_end, ipgpuv_start, ipgpuv_end
 real(jprd) :: t0
+integer :: num_batches
 
 interface
 subroutine start_MPI_helper() bind(C, name="start_MPI_helper_")
@@ -230,12 +231,6 @@ call dr_hook_init()
 if( lstats ) call gstats(0,0)
 ztinit = timef()
 t0 = get_time()
-
-allocate(t_event((iters+2)*40))
-allocate(t_batch((iters+2)*40))
-allocate(t_stage((iters+2)*40))
-allocate(t_type((iters+2)*40))
-tcount = 1
 
 ! only output to stdout on pe 1
 if (nproc > 1) then
@@ -516,6 +511,14 @@ else
   allocate(zgp3a(nproma,nflevg,inum_sc_3d_fields,ngpblks))
   allocate(zgp2(nproma,inum_sc_2d_fields,ngpblks))
 endif
+
+num_batches = (itotal_fields + npromatr - 1) / npromatr
+allocate(t_event((iters+2)*10*num_batches))
+allocate(t_batch((iters+2)*10*num_batches))
+allocate(t_stage((iters+2)*10*num_batches))
+allocate(t_type((iters+2)*10*num_batches))
+tcount = 1
+
 
 !===================================================================================================
 ! Allocate norm arrays
