@@ -126,6 +126,7 @@ integer(kind=jpim) :: nprnt_stats = 1
 
 logical :: lprint_norms = .false. ! Calculate and print spectral norms
 logical :: lmeminfo = .false. ! Show information from FIAT routine ec_meminfo at the end
+logical :: luse_progress_thread = .false.
 
 ! The multiplier of the machine epsilon used as a tolerance for correctness checking
 ! ncheck = 0 (the default) means that correctness checking is disabled
@@ -204,7 +205,7 @@ luse_mpi = detect_mpirun()
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvder, &
   & luseflt, nproma, verbosity, ldump_values, lprint_norms, lmeminfo, nprtrv, nprtrw, ncheck, &
-  & icall_mode, npromatr)
+  & icall_mode, npromatr, luse_progress_thread)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid, ndgl, nloen)
 nflevg = nlev
@@ -222,7 +223,9 @@ else
 endif
 nthread = oml_max_threads()
 
-call start_MPI_helper
+if (luse_progress_thread) then
+  call start_MPI_helper
+endif
 
 call dr_hook_init()
 
@@ -957,7 +960,9 @@ endif
 ! Finalize MPI
 !===================================================================================================
 
-call stop_MPI_helper
+if (luse_progress_thread) then
+  call stop_MPI_helper
+endif
 
 if (luse_mpi) then
   call mpl_end(ldmeminfo=.false.)
@@ -1061,7 +1066,8 @@ end subroutine
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvder, &
   &                                   luseflt, nproma, verbosity, ldump_values, lprint_norms, &
-  &                                   lmeminfo, nprtrv, nprtrw, ncheck, icall_mode, npromatr)
+  &                                   lmeminfo, nprtrv, nprtrw, ncheck, icall_mode, npromatr, &
+  &                                   luse_progress_thread)
 
   integer, intent(inout) :: nsmax           ! Spectral truncation
   character(len=16), intent(inout) :: cgrid ! Spectral truncation
@@ -1086,6 +1092,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
                                             ! 1: pspvor, pspdiv, pspscalar, pgp
                                             ! 2: pspvor, pspdiv, pspsc3a, pspsc2, pgpuv, pgp3a, pgp2
   integer, intent(inout) :: npromatr
+  logical, intent(inout) :: luse_progress_thread
 
   character(len=128) :: carg          ! Storage variable for command line arguments
   integer            :: iarg = 1      ! Argument index
@@ -1142,6 +1149,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
           if (npromatr < 1) then
             call parsing_failed("Invalid argument for --npromatr: must be greater than 0")
           end if
+      case('--progress-thread'); luse_progress_thread = .True.
       case default
         call parsing_failed("Unrecognised argument: " // trim(carg))
 
