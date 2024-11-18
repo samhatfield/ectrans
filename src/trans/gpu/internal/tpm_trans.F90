@@ -64,5 +64,6 @@ LOGICAL :: LGPNORM = .FALSE.  ! indicates whether transform is being done for gp
 ! (the first iteration is used to get the max buffer size, the second iteration
 ! is going to recreate the graphs if needed)
 TYPE(GROWING_ALLOCATION_TYPE) :: GROWING_ALLOCATION
+TYPE(GROWING_ALLOCATION_TYPE) :: GROWING_GAM_ALLOCATION
 
 END MODULE TPM_TRANS
