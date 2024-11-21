@@ -28,7 +28,7 @@ use yomgstats, only: jpmaxstat, gstats_lstats => lstats
 use yomhook, only : dr_hook_init
 use timing_mod, only: get_time, tcomm1, tcomm2, tcomm3, tcomp1, tcomp2, tcount, t_event, t_batch, &
   &                   t_stage, t_type
-use mpi, only : MPI_DOUBLE_PRECISION,MPI_INTEGER,mpi_wtime
+use mpi, only : MPI_DOUBLE_PRECISION
 
 implicit none
 
@@ -180,7 +180,6 @@ integer :: ipgp_start, ipgp_end, ipgpuv_start, ipgpuv_end
 real(jprd) :: t0
 integer :: num_batches
 real(8), allocatable :: t_comm(:,:,:),t_comp(:,:,:),gt_comm(:,:,:,:),gt_comp(:,:,:,:)
-integer, allocatable :: gsendcount(:,:,:),grecvcount(:,:,:)
 
 interface
 subroutine start_MPI_helper() bind(C, name="start_MPI_helper_")
