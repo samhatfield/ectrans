@@ -27,7 +27,7 @@ use mpl_module
 use yomgstats, only: jpmaxstat, gstats_lstats => lstats
 use yomhook, only : dr_hook_init
 use timing_mod, only: get_time, tcomm1, tcomm2, tcomm3, tcomp1, tcomp2, tcount, t_event, t_batch, &
-  &                   t_stage, t_type,sendcount,recvcount
+  &                   t_stage, t_type
 use mpi, only : MPI_DOUBLE_PRECISION,MPI_INTEGER,mpi_wtime
 
 implicit none
@@ -173,7 +173,7 @@ logical :: luse_mpi = .true.
 
 character(len=16) :: cgrid = ''
 
-integer(kind=jpim) :: ierr,iproc,j,k,l,nbatches
+integer(kind=jpim) :: ierr,iproc,j,k,l
 integer :: icall_mode = 1
 integer :: inum_wind_fields, inum_sc_3d_fields, inum_sc_2d_fields, itotal_fields
 integer :: ipgp_start, ipgp_end, ipgpuv_start, ipgpuv_end
@@ -212,7 +212,6 @@ call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscder
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid, ndgl, nloen)
 nflevg = nlev
-nbatches = (nlev*3+1)/npromatr
 
 !===================================================================================================
 
@@ -906,7 +905,7 @@ write(nout,'(" ")')
 
 
 
-allocate(t_comm(3,2,nbatches),t_comp(2,2,nbatches))
+allocate(t_comm(3,2,num_batches),t_comp(2,2,num_batches))
 
 do i = 1, tcount - 1
    select case(t_type(i))
@@ -929,25 +928,20 @@ do i = 1, tcount - 1
 end do
 
 if(myproc .eq. 1) then
-   allocate(gt_comm(3,2,nbatches,nproc),gt_comp(2,2,nbatches,nproc),gsendcount(2,nbatches,nproc),grecvcount(2,nbatches,nproc))
+   allocate(gt_comm(3,2,num_batches,nproc),gt_comp(2,2,num_batches,nproc))
 endif
 
-call mpi_gather(t_comm,6*nbatches,MPI_DOUBLE_PRECISION,gt_comm,6*nbatches,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-call mpi_gather(t_comp,4*nbatches,MPI_DOUBLE_PRECISION,gt_comp,4*nbatches,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-call mpi_gather(sendcount,2*nbatches,MPI_INTEGER,gsendcount,2*nbatches,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-call mpi_gather(recvcount,2*nbatches,MPI_INTEGER,grecvcount,2*nbatches,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+call mpi_gather(t_comm,6*num_batches,MPI_DOUBLE_PRECISION,gt_comm,6*num_batches,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+call mpi_gather(t_comp,4*num_batches,MPI_DOUBLE_PRECISION,gt_comp,4*num_batches,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
 if(myproc .eq. 1) then
    open(10,file='sum.txt',action='write',form='formatted')
    do iproc = 1,nproc
-      write(10,*) (((gt_comm(j,k,l,iproc), j=1,3), k=1,2), l=1,nbatches)
+      write(10,*) (((gt_comm(j,k,l,iproc), j=1,3), k=1,2), l=1,num_batches)
    enddo
    write(10,*) ' '
    do iproc = 1,nproc
-      write(10,*) (((gt_comp(j,k,l,iproc), j=1,2), k=1,2), l=1,nbatches)
-   enddo
-   do iproc = 1,nproc
-      write(10,*) ((gsendcount(i,j,iproc)*4, i=1,2),j=1,nbatches), ((grecvcount(i,j,iproc)*4, i=1,2),j=1,nbatches)
+      write(10,*) (((gt_comp(j,k,l,iproc), j=1,2), k=1,2), l=1,num_batches)
    enddo
    close(10)
 
