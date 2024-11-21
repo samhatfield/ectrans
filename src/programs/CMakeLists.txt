@@ -19,6 +19,7 @@ foreach( program ectrans-benchmark )
                                   fiat
                                   parkind_${prec}
                                   trans_${prec}
+                                  $<${HAVE_MPI}:MPI::MPI_Fortran>
         )
         target_compile_definitions(${program}-cpu-${prec} PRIVATE VERSION="cpu")
       endif()
