@@ -52,6 +52,7 @@ list( APPEND ectrans_common_src
   external/setup_trans0.F90
   external/ini_spec_dist.F90
   ${CMAKE_CURRENT_BINARY_DIR}/internal/ectrans_version_mod.F90
+  internal/mpi_helper.c
 )
 list( APPEND ectrans_common_includes
   ectrans/get_current.h
