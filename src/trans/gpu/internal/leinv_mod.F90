@@ -172,7 +172,7 @@ CONTAINS
                        IOUT0_STRIDES0,IOUT0_SIZE,IIN0_STRIDES0,IIN0_SIZE)
 
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
     !$OMP TARGET DATA &
     !$OMP&              MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP) &
     !$OMP&              MAP(PRESENT,ALLOC:ZINP,ZOUTS,ZOUTA,ZINP0,ZOUTS0,ZOUTA0) &
@@ -473,7 +473,7 @@ CONTAINS
     ENDIF
     CALL GSTATS(424,1)
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
     !$OMP END TARGET DATA
 #endif
 #ifdef ACCGPU

@@ -159,8 +159,11 @@ CONTAINS
           TO_SEND = FROM_SEND + ILENS(IRANK) - 1
           FROM_RECV = IOFFR(IRANK) + 1
           TO_RECV = FROM_RECV + ILENR(IRANK) - 1
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
+          !$OMP TARGET DATA MAP(PRESENT,ALLOC:PFBUF,PFBUF_IN)
+#endif
 #ifdef OMPGPU
-          !$OMP TARGET TEAMS MAP(PRESENT,ALLOC:PFBUF,PFBUF_IN) MAP(TO:FROM_RECV,TO_RECV,FROM_SEND,TO_SEND)
+          !$OMP TARGET TEAMS MAP(TO:FROM_RECV,TO_RECV,FROM_SEND,TO_SEND)
 #endif
 #ifdef ACCGPU
 #ifdef __HIP_PLATFORM_AMD__
@@ -171,11 +174,14 @@ CONTAINS
 #endif
 #endif
           PFBUF(FROM_RECV:TO_RECV) = PFBUF_IN(FROM_SEND:TO_SEND)
+#ifdef ACCGPU
+          !$ACC END KERNELS
+#endif
 #ifdef OMPGPU
           !$OMP END TARGET TEAMS
 #endif
-#ifdef ACCGPU
-          !$ACC END KERNELS
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
+          !$OMP END TARGET DATA
 #endif
           ILENS(IRANK) = 0
           ILENR(IRANK) = 0

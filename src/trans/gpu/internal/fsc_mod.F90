@@ -101,7 +101,7 @@ ELSE
   IINC=-1
 ENDIF
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
 !$OMP TARGET DATA &
 !$OMP& MAP(PRESENT,ALLOC:D,D_NPTRLS,D_NSTAGTF,PREEL_COMPLEX,F,F_RACTHE,G,G_NMEN,G_NLOEN,R,R_NSMAX)
 #endif
@@ -309,7 +309,7 @@ ENDIF
 
 !$ACC END DATA
 #endif
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
 !$OMP END TARGET DATA
 #endif
 !     ------------------------------------------------------------------

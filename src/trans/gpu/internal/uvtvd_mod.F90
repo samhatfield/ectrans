@@ -84,7 +84,7 @@ ASSOCIATE(D_NUMP=>D%NUMP, R_NTMAX=>R%NTMAX, D_MYMS=>D%MYMS, ZEPSNM=>FG%ZEPSNM)
 !*       1.    COMPUTE U V FROM VORTICITY AND DIVERGENCE.
 !              ------------------------------------------
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
 !$OMP TARGET DATA MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP,R,R_NTMAX,FG,ZEPSNM,PU,PV,PVOR,PDIV)
 #endif
 #ifdef ACCGPU
@@ -174,7 +174,7 @@ ENDDO
 #ifdef ACCGPU
 !$ACC END DATA
 #endif
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
 !$OMP END TARGET DATA
 #endif
 !     ------------------------------------------------------------------

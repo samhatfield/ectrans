@@ -205,7 +205,7 @@ IEND=D%NDGL_FS
 CALL GSTATS(1429,0)
 IF( IF_FS > 0 )THEN
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
   !$OMP TARGET DATA MAP(PRESENT,ALLOC:F,F_RW,D,D_NSTAGTF,D_NPTRLS,G_NLOEN)
 #endif
 #ifdef ACCGPU
@@ -285,7 +285,7 @@ IF( IF_FS > 0 )THEN
   !$ACC END KERNELS
 #endif
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
   !$OMP END TARGET DATA
 #endif
 #ifdef ACCGPU

@@ -96,7 +96,7 @@ MODULE UPDSPB_MOD
   !*       1.    UPDATE SPECTRAL FIELDS.
   !              -----------------------
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
   !$OMP TARGET DATA MAP(PRESENT,ALLOC:PSPEC,POA,R,R_NTMAX,D,D_NUMP,D_MYMS,D_NASM0)
 #endif
 #ifdef ACCGPU
@@ -141,7 +141,7 @@ MODULE UPDSPB_MOD
 #ifdef ACCGPU
   !$ACC END DATA
 #endif
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
   !$OMP END TARGET DATA
 #endif
  

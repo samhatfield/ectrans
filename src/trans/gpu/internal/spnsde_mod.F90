@@ -82,7 +82,7 @@ INTEGER(KIND=JPIM) :: J, JN, JI, IR, II
 
 ASSOCIATE(D_NUMP=>D%NUMP, R_NTMAX=>R%NTMAX, D_MYMS=>D%MYMS)
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
 !$OMP TARGET DATA &
 !$OMP&              MAP(PRESENT,ALLOC:R,R_NTMAX,D,D_MYMS) &
 !$OMP&              MAP(PRESENT,ALLOC:D_NUMP,PEPSNM,PF,PNSD)
@@ -138,7 +138,7 @@ DO KMLOC=1,D_NUMP
   ENDDO
 END DO
 
-#ifdef OMPGPU
+#if defined(OMPGPU) && !defined(__NVCOMPILER)
 !$OMP END TARGET DATA
 #endif
 #ifdef ACCGPU
