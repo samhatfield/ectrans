@@ -78,13 +78,11 @@ MODULE PRFI1B_MOD
   !*       1.    EXTRACT FIELDS FROM SPECTRAL ARRAYS.
   !              --------------------------------------------------
 
-  ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS, D_NASM0=>D%NASM0)
-
 #ifdef ACCGPU
-  !$ACC DATA PRESENT(D,D_NUMP,R,R%NSMAX,D_MYMS,D_NASM0,PIA,PSPEC) ASYNC(1)
+  !$ACC DATA PRESENT(D,D%NUMP,R,R%NSMAX,D%MYMS,D%NASM0,PIA,PSPEC) ASYNC(1)
 #endif
 #ifdef OMPGPU
-  !$OMP TARGET DATA MAP(PRESENT,ALLOC:D,D_NUMP,D_MYMS,D_NASM0,PIA,PSPEC) MAP(TO:R)
+  !$OMP TARGET DATA MAP(PRESENT,ALLOC:PIA,PSPEC) MAP(TO:R,D)
 #endif
 
   IF(PRESENT(KFLDPTR)) THEN
@@ -108,16 +106,16 @@ MODULE PRFI1B_MOD
     !$ACC&
 #endif
 #endif
-    DO KMLOC=1,D_NUMP
+    DO KMLOC=1,D%NUMP
       DO JN=0,R%NSMAX+3
         DO JFLD=1,KFIELDS
-          KM = D_MYMS(KMLOC)
+          KM = D%MYMS(KMLOC)
 
           IF (JN <= 1) THEN
               PIA(2*JFLD-1,JN+1,KMLOC) = 0.0_JPRB
               PIA(2*JFLD  ,JN+1,KMLOC) = 0.0_JPRB
           ELSEIF (JN <= R%NSMAX+2-KM) THEN
-              IASM0 = D_NASM0(KM)
+              IASM0 = D%NASM0(KM)
               INM = IASM0+((R%NSMAX+2-JN)-KM)*2
               PIA(2*JFLD-1,JN+1,KMLOC) = PSPEC(JFLD,INM  )
               PIA(2*JFLD  ,JN+1,KMLOC) = PSPEC(JFLD,INM+1)
@@ -137,8 +135,6 @@ MODULE PRFI1B_MOD
 #ifdef OMPGPU
   !$OMP END TARGET DATA
 #endif
-
-  END ASSOCIATE
 
   !     ------------------------------------------------------------------
 

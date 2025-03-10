@@ -80,17 +80,14 @@ REAL(KIND=JPRB),    INTENT(OUT) :: PNSD(:,:,:)
 !     LOCAL INTEGER SCALARS
 INTEGER(KIND=JPIM) :: J, JN, JI, IR, II
 
-ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS)
-
 #ifdef OMPGPU
 !$OMP TARGET DATA &
-!$OMP&              MAP(PRESENT,ALLOC:D,D_MYMS) &
-!$OMP&              MAP(PRESENT,ALLOC:D_NUMP,PEPSNM,PF,PNSD) MAP(TO:R)
+!$OMP&              MAP(PRESENT,ALLOC:PEPSNM,PF,PNSD) MAP(TO:R,D)
 #endif
 #ifdef ACCGPU
 !$ACC DATA                                  &
-!$ACC&      PRESENT (R,R%NTMAX, D,D_MYMS)       &
-!$ACC&      PRESENT (D_NUMP,PEPSNM, PF, PNSD) ASYNC(1)
+!$ACC&      PRESENT (R,R%NTMAX, D,D%MYMS)       &
+!$ACC&      PRESENT (D%NUMP,PEPSNM, PF, PNSD) ASYNC(1)
 #endif
 
 !     ------------------------------------------------------------------
@@ -113,12 +110,12 @@ ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS)
 !$ACC&
 #endif
 #endif
-DO KMLOC=1,D_NUMP
+DO KMLOC=1,D%NUMP
   DO JN=0,R%NTMAX+1
     DO J=1,KF_SCALARS
       IR = 2*J-1
       II = IR+1
-      KM = D_MYMS(KMLOC)
+      KM = D%MYMS(KMLOC)
 
       IF(KM /= 0 .AND. JN >= KM) THEN
         ! (DO JN=KN,R%NTMAX+1)
@@ -146,7 +143,6 @@ END DO
 #endif
 
 !     ------------------------------------------------------------------
-END ASSOCIATE
 
 END SUBROUTINE SPNSDE
 END MODULE SPNSDE_MOD

@@ -85,19 +85,16 @@ INTEGER(KIND=JPIM) :: II, IJ, IR, J, JN, JI
 !     LOCAL REAL SCALARS
 REAL(KIND=JPRBT) :: ZKM
 
-ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS)
-
 #ifdef ACCGPU
 !$ACC DATA                                                       &
-!$ACC&      PRESENT(R,R%NTMAX,D,D_MYMS,D_NUMP,F,F%RLAPIN) &
+!$ACC&      PRESENT(R,R%NTMAX,D,D%MYMS,D%NUMP,F,F%RLAPIN) &
 !$ACC&      PRESENT(PEPSNM, PVOR, PDIV)                          &
 !$ACC&      PRESENT(PU, PV)
 #endif
 #ifdef OMPGPU
 !$OMP TARGET DATA                                                   &
-!$OMP&      MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP) &
 !$OMP&      MAP(PRESENT,ALLOC:PEPSNM, PVOR, PDIV)                   &
-!$OMP&      MAP(PRESENT,ALLOC:PU, PV) MAP(TO:R,F)
+!$OMP&      MAP(PRESENT,ALLOC:PU, PV) MAP(TO:R,F,D)
 #endif
 
 !     ------------------------------------------------------------------
@@ -118,12 +115,12 @@ ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS)
 !$ACC&
 #endif
 #endif
-DO KMLOC=1,D_NUMP
+DO KMLOC=1,D%NUMP
   DO JN=0,R%NTMAX+1
     DO J=1,KFIELD
       IR = 2*J-1
       II = IR+1
-      KM = D_MYMS(KMLOC)
+      KM = D%MYMS(KMLOC)
       ZKM = REAL(KM,JPRBT)
 
       IF(KM /= 0 .AND. JN >= KM) THEN
@@ -164,7 +161,6 @@ ENDDO
 !$OMP END TARGET DATA
 #endif
 !     ------------------------------------------------------------------
-END ASSOCIATE
 
 END SUBROUTINE VDTUV
 END MODULE VDTUV_MOD

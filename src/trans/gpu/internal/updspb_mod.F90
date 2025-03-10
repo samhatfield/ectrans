@@ -87,7 +87,6 @@ MODULE UPDSPB_MOD
   ! and nn=NTMAX+2-n from NTMAX+2-m to NTMAX+2-NSMAX.
   ! NLTN(m)=NTMAX+2-m : n=NLTN(nn),nn=NLTN(n)
   ! nn is the loop index.
-  ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS, D_NASM0=>D%NASM0)
 
   IF(PRESENT(KFLDPTR)) THEN
     CALL ABORT_TRANS('UPDSPB: Code path not (yet) supported in GPU version')
@@ -97,10 +96,10 @@ MODULE UPDSPB_MOD
   !              -----------------------
 
 #ifdef OMPGPU
-  !$OMP TARGET DATA MAP(PRESENT,ALLOC:PSPEC,POA,D,D_NUMP,D_MYMS,D_NASM0) MAP(TO:R)
+  !$OMP TARGET DATA MAP(PRESENT,ALLOC:PSPEC,POA) MAP(TO:R,D)
 #endif
 #ifdef ACCGPU
-  !$ACC DATA PRESENT(PSPEC,POA,R,R%NTMAX,D,D_NUMP,D_MYMS,D_NASM0) ASYNC(1)
+  !$ACC DATA PRESENT(PSPEC,POA,R,R%NTMAX,D,D%NUMP,D%MYMS,D%NASM0) ASYNC(1)
 #endif
 
 ! Directive incomplete -> putting more variables in SHARED() triggers internal compiler error
@@ -117,11 +116,11 @@ MODULE UPDSPB_MOD
   !$ACC&
 #endif
 #endif
-  DO KMLOC=1,D_NUMP
+  DO KMLOC=1,D%NUMP
     DO JN=3,R%NTMAX+3
       DO JFLD=1,KFIELD
-        KM = D_MYMS(KMLOC)
-        IASM0 = D_NASM0(KM)
+        KM = D%MYMS(KMLOC)
+        IASM0 = D%NASM0(KM)
 
         IF(KM /= 0 .AND. JN <= R%NTMAX+3-KM) THEN
         !(DO JN=3,R%NTMAX+3-KM)
@@ -144,8 +143,7 @@ MODULE UPDSPB_MOD
 #ifdef OMPGPU
   !$OMP END TARGET DATA
 #endif
- 
-  END ASSOCIATE
+
   !     ------------------------------------------------------------------
  
   END SUBROUTINE UPDSPB
