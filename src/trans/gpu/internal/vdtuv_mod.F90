@@ -85,19 +85,19 @@ INTEGER(KIND=JPIM) :: II, IJ, IR, J, JN, JI
 !     LOCAL REAL SCALARS
 REAL(KIND=JPRBT) :: ZKM
 
-ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS, R_NTMAX=>R%NTMAX, F_RLAPIN=>F%RLAPIN)
+ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS, F_RLAPIN=>F%RLAPIN)
 
 #ifdef ACCGPU
 !$ACC DATA                                                       &
-!$ACC&      PRESENT(R,R_NTMAX,D,D_MYMS,D_NUMP,F,F_RLAPIN) &
+!$ACC&      PRESENT(R,R%NTMAX,D,D_MYMS,D_NUMP,F,F_RLAPIN) &
 !$ACC&      PRESENT(PEPSNM, PVOR, PDIV)                          &
 !$ACC&      PRESENT(PU, PV)
 #endif
 #ifdef OMPGPU
 !$OMP TARGET DATA                                                   &
-!$OMP&      MAP(PRESENT,ALLOC:R,R_NTMAX,D,D_MYMS,D_NUMP,F,F_RLAPIN) &
+!$OMP&      MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP,F,F_RLAPIN) &
 !$OMP&      MAP(PRESENT,ALLOC:PEPSNM, PVOR, PDIV)                   &
-!$OMP&      MAP(PRESENT,ALLOC:PU, PV)
+!$OMP&      MAP(PRESENT,ALLOC:PU, PV) MAP(TO:R)
 #endif
 
 !     ------------------------------------------------------------------
@@ -119,7 +119,7 @@ ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS, R_NTMAX=>R%NTMAX, F_RLAPIN=>F%RLAPIN)
 #endif
 #endif
 DO KMLOC=1,D_NUMP
-  DO JN=0,R_NTMAX+1
+  DO JN=0,R%NTMAX+1
     DO J=1,KFIELD
       IR = 2*J-1
       II = IR+1
@@ -127,8 +127,8 @@ DO KMLOC=1,D_NUMP
       ZKM = REAL(KM,JPRBT)
 
       IF(KM /= 0 .AND. JN >= KM) THEN
-        ! (DO JN=KN,R_NTMAX)
-        JI = R_NTMAX+3-JN
+        ! (DO JN=KN,R%NTMAX)
+        JI = R%NTMAX+3-JN
         PU(IR,JI,KMLOC) = -ZKM*F_RLAPIN(JN)*PDIV(II,JI,KMLOC)+&
          &(JN-1)*PEPSNM(KMLOC,JN)*F_RLAPIN(JN-1)*PVOR(IR,JI+1,KMLOC)-&
          &(JN+2)*PEPSNM(KMLOC,JN+1)*F_RLAPIN(JN+1)*PVOR(IR,JI-1,KMLOC)
@@ -143,8 +143,8 @@ DO KMLOC=1,D_NUMP
          &(JN+2)*PEPSNM(KMLOC,JN+1)*F_RLAPIN(JN+1)*PDIV(II,JI-1,KMLOC)
 
       ELSEIF(KM == 0) THEN
-        ! (DO JN=0,R_NTMAX)
-        JI = R_NTMAX+3-JN
+        ! (DO JN=0,R%NTMAX)
+        JI = R%NTMAX+3-JN
 
         PU(IR,JI,KMLOC) = +&
          &(JN-1)*PEPSNM(KMLOC,JN)*F_RLAPIN(JN-1)*PVOR(IR,JI+1,KMLOC)-&

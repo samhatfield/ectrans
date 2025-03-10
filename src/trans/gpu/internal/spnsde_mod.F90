@@ -80,16 +80,16 @@ REAL(KIND=JPRB),    INTENT(OUT) :: PNSD(:,:,:)
 !     LOCAL INTEGER SCALARS
 INTEGER(KIND=JPIM) :: J, JN, JI, IR, II
 
-ASSOCIATE(D_NUMP=>D%NUMP, R_NTMAX=>R%NTMAX, D_MYMS=>D%MYMS)
+ASSOCIATE(D_NUMP=>D%NUMP, D_MYMS=>D%MYMS)
 
 #ifdef OMPGPU
 !$OMP TARGET DATA &
-!$OMP&              MAP(PRESENT,ALLOC:R,R_NTMAX,D,D_MYMS) &
-!$OMP&              MAP(PRESENT,ALLOC:D_NUMP,PEPSNM,PF,PNSD)
+!$OMP&              MAP(PRESENT,ALLOC:D,D_MYMS) &
+!$OMP&              MAP(PRESENT,ALLOC:D_NUMP,PEPSNM,PF,PNSD) MAP(TO:R)
 #endif
 #ifdef ACCGPU
 !$ACC DATA                                  &
-!$ACC&      PRESENT (R,R_NTMAX, D,D_MYMS)       &
+!$ACC&      PRESENT (R,R%NTMAX, D,D_MYMS)       &
 !$ACC&      PRESENT (D_NUMP,PEPSNM, PF, PNSD) ASYNC(1)
 #endif
 
@@ -114,23 +114,23 @@ ASSOCIATE(D_NUMP=>D%NUMP, R_NTMAX=>R%NTMAX, D_MYMS=>D%MYMS)
 #endif
 #endif
 DO KMLOC=1,D_NUMP
-  DO JN=0,R_NTMAX+1
+  DO JN=0,R%NTMAX+1
     DO J=1,KF_SCALARS
       IR = 2*J-1
       II = IR+1
       KM = D_MYMS(KMLOC)
 
       IF(KM /= 0 .AND. JN >= KM) THEN
-        ! (DO JN=KN,R_NTMAX+1)
-        JI = R_NTMAX+3-JN
+        ! (DO JN=KN,R%NTMAX+1)
+        JI = R%NTMAX+3-JN
         PNSD(IR,JI,KMLOC) = -(JN-1)*PEPSNM(KMLOC,JN)*PF(IR,JI+1,KMLOC)+&
          &(JN+2)*PEPSNM(KMLOC,JN+1)*PF(IR,JI-1,KMLOC)
         PNSD(II,JI,KMLOC) = -(JN-1)*PEPSNM(KMLOC,JN)*PF(II,JI+1,KMLOC)+&
          &(JN+2)*PEPSNM(KMLOC,JN+1)*PF(II,JI-1,KMLOC)
 
       ELSEIF(KM == 0) THEN
-        ! (DO JN=0,R_NTMAX+1)
-        JI = R_NTMAX+3-JN
+        ! (DO JN=0,R%NTMAX+1)
+        JI = R%NTMAX+3-JN
         PNSD(IR,JI,KMLOC) = -(JN-1)*PEPSNM(KMLOC,JN)*PF(IR,JI+1,KMLOC)+&
          &(JN+2)*PEPSNM(KMLOC,JN+1)*PF(IR,JI-1,KMLOC)
       ENDIF

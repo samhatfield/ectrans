@@ -159,7 +159,7 @@ CONTAINS
 
     INTEGER(KIND=C_LONG) :: HIP_STREAM
 
-    ASSOCIATE(D_NUMP=>D%NUMP, R_NSMAX=>R%NSMAX, R_NTMAX=>R%NTMAX, G_NDGLU=>G%NDGLU, &
+    ASSOCIATE(D_NUMP=>D%NUMP, G_NDGLU=>G%NDGLU, &
             & D_MYMS=>D%MYMS, D_OFFSETS_GEMM1=>D%OFFSETS_GEMM1, &
             & D_OFFSETS_GEMM2=>D%OFFSETS_GEMM2, &
             & ZAA=>FG%ZAA, ZAS=>FG%ZAS, ZAA0=>FG%ZAA0, ZAS0=>FG%ZAS0)
@@ -178,13 +178,14 @@ CONTAINS
 #ifdef OMPGPU
     !$OMP TARGET DATA &
     !$OMP& MAP(PRESENT,ALLOC:ZINPS,ZINPA,ZOUT,ZINPS0,ZINPA0,ZOUT0) &
-    !$OMP& MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP,R,R_NTMAX,R_NSMAX) &
-    !$OMP& MAP(PRESENT,ALLOC:ZAA,ZAS,POA1,D_OFFSETS_GEMM1,D_OFFSETS_GEMM2)
+    !$OMP& MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP) &
+    !$OMP& MAP(PRESENT,ALLOC:ZAA,ZAS,POA1,D_OFFSETS_GEMM1,D_OFFSETS_GEMM2) &
+    !$OMP& MAP(TO:R)
 #endif
 #ifdef ACCGPU
     !$ACC DATA &
     !$ACC& PRESENT(ZINPS,ZINPA,ZOUT,ZINPS0,ZINPA0,ZOUT0) &
-    !$ACC& PRESENT(D,D_MYMS,D_NUMP,R,R_NTMAX,R_NSMAX) &
+    !$ACC& PRESENT(D,D_MYMS,D_NUMP,R,R%NTMAX,R%NSMAX) &
     !$ACC& PRESENT(ZAA,ZAS,POA1,D_OFFSETS_GEMM1,D_OFFSETS_GEMM2)
 #endif
 
@@ -210,7 +211,7 @@ CONTAINS
 #endif
       CALL HIP_DGEMM_BATCHED( &
         & 'N', 'N', &
-        & KF_FS, (R_NSMAX+2)/2, G_NDGLU(0), &
+        & KF_FS, (R%NSMAX+2)/2, G_NDGLU(0), &
         & 1.0_JPRD, &
         & ZINPA0, IIN0_STRIDES0, 0, &
         & ZAA0, SIZE(ZAA0,1), 0, &
@@ -229,7 +230,7 @@ CONTAINS
     ! C^T=B^T*A^T
     DO KMLOC=1,D_NUMP
       KM = D_MYMS(KMLOC)
-      NS(KMLOC) = (R_NSMAX-KM+2)/2
+      NS(KMLOC) = (R%NSMAX-KM+2)/2
       KS(KMLOC) = G_NDGLU(KM)
       AOFFSETS(KMLOC) = IIN_STRIDES0*D_OFFSETS_GEMM1(KMLOC)
       BOFFSETS(KMLOC) = D%OFFSETS_GEMM_MATRIX(KMLOC)
@@ -287,19 +288,19 @@ CONTAINS
     DO KMLOC=1,D_NUMP
       DO JF=1,2*KF_FS
         KM = D_MYMS(KMLOC)
-        IA  = 1+MOD(R_NTMAX-KM+2,2)
+        IA  = 1+MOD(R%NTMAX-KM+2,2)
         IF (KM /= 0) THEN
 #ifdef ACCGPU
           !$ACC LOOP SEQ
 #endif
-          DO J=1,(R_NSMAX-KM+2)/2
+          DO J=1,(R%NSMAX-KM+2)/2
             POA1(JF,IA+1+(J-1)*2,KMLOC) = ZOUT(JF+(J-1)*IOUT_STRIDES0+D_OFFSETS_GEMM2(KMLOC)*IOUT_STRIDES0)
           ENDDO
         ELSEIF (MOD(JF-1,2) == 0) THEN
 #ifdef ACCGPU
           !$ACC LOOP SEQ
 #endif
-          DO J=1,(R_NSMAX+2)/2
+          DO J=1,(R%NSMAX+2)/2
             POA1(JF,IA+1+(J-1)*2,KMLOC) = ZOUT0((JF-1)/2+1+(J-1)*IOUT0_STRIDES0)
           ENDDO
         ENDIF
@@ -328,7 +329,7 @@ CONTAINS
       ! compute m=0 in double precision:
       call HIP_DGEMM_BATCHED( &
         & 'N', 'N', &
-        & KF_FS, (R_NSMAX+3)/2, G_NDGLU(0), &
+        & KF_FS, (R%NSMAX+3)/2, G_NDGLU(0), &
         & 1.0_JPRD, &
         & ZINPS0, IIN0_STRIDES0, 0, &
         & ZAS0, SIZE(ZAS0,1), 0, &
@@ -348,7 +349,7 @@ CONTAINS
     ! C^T=B^T*A^T
     DO KMLOC=1,D_NUMP
       KM = D_MYMS(KMLOC)
-      NS(KMLOC) = (R_NSMAX-KM+3)/2
+      NS(KMLOC) = (R%NSMAX-KM+3)/2
       KS(KMLOC) = G_NDGLU(KM)
       AOFFSETS(KMLOC) = IIN_STRIDES0*D_OFFSETS_GEMM1(KMLOC)
       BOFFSETS(KMLOC) = D%OFFSETS_GEMM_MATRIX(KMLOC)
@@ -406,19 +407,19 @@ CONTAINS
     DO KMLOC=1,D_NUMP
       DO JF=1,2*KF_FS
         KM = D_MYMS(KMLOC)
-        IS  = 1+MOD(R_NTMAX-KM+1,2)
+        IS  = 1+MOD(R%NTMAX-KM+1,2)
         IF (KM /= 0) THEN
 #ifdef ACCGPU
           !$ACC LOOP SEQ
 #endif
-          DO J=1,(R_NSMAX-KM+3)/2
+          DO J=1,(R%NSMAX-KM+3)/2
             POA1(JF,IS+1+(J-1)*2,KMLOC) = ZOUT(JF+(J-1)*IOUT_STRIDES0+D_OFFSETS_GEMM2(KMLOC)*IOUT_STRIDES0)
           ENDDO
         ELSEIF (MOD(JF-1,2) == 0) THEN
 #ifdef ACCGPU
           !$ACC LOOP SEQ
 #endif
-          DO J=1,(R_NSMAX+3)/2
+          DO J=1,(R%NSMAX+3)/2
             POA1(JF,IS+1+(J-1)*2,KMLOC) = ZOUT0((JF-1)/2+1+(J-1)*IOUT0_STRIDES0)
           ENDDO
         ENDIF
