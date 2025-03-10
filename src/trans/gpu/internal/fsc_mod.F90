@@ -87,7 +87,6 @@ INTEGER(KIND=JPIM) :: JF,IGLG,JM
 INTEGER(KIND=JPIM) :: IBEG,IEND,IINC
 REAL(KIND=JPRBT) :: RET_REAL, RET_COMPLEX
 
-ASSOCIATE(G_NMEN=>G%NMEN, G_NLOEN=>G%NLOEN)
 !     ------------------------------------------------------------------
 
 IF(MYPROC > NPROC/2)THEN
@@ -102,11 +101,11 @@ ENDIF
 
 #ifdef OMPGPU
 !$OMP TARGET DATA &
-!$OMP& MAP(PRESENT,ALLOC:PREEL_COMPLEX,G,G_NMEN,G_NLOEN) MAP(TO:R,F,D)
+!$OMP& MAP(PRESENT,ALLOC:PREEL_COMPLEX) MAP(TO:R,F,D,G)
 #endif
 #ifdef ACCGPU
 !$ACC DATA &
-!$ACC& PRESENT(D,D%NPTRLS,D%NSTAGTF,PREEL_COMPLEX,F,F%RACTHE,G,G_NMEN,G_NLOEN,R,R%NSMAX)
+!$ACC& PRESENT(D,D%NPTRLS,D%NSTAGTF,PREEL_COMPLEX,F,F%RACTHE,G,G%NMEN,G%NLOEN,R,R%NSMAX)
 #endif
 
 !     ------------------------------------------------------------------
@@ -136,9 +135,9 @@ OFFSET_VAR=D%NPTRLS(MYSETW)
 #endif
 DO KGL=IBEG,IEND,IINC
   DO JF=1,2*KF_UV
-    DO JM=0,R%NSMAX !(note that R%NSMAX <= G_NMEN(IGLG) for all IGLG)
+    DO JM=0,R%NSMAX !(note that R%NSMAX <= G%NMEN(IGLG) for all IGLG)
       IGLG    = OFFSET_VAR+KGL-1
-      IF (JM <= G_NMEN(IGLG)) THEN
+      IF (JM <= G%NMEN(IGLG)) THEN
         IOFF_LAT = 1_JPIB*KF_FS*D%NSTAGTF(KGL)
         IOFF_UV = IOFF_LAT+(KUV_OFFSET+JF-1)*(D%NSTAGTF(KGL+1)-D%NSTAGTF(KGL))
 
@@ -175,9 +174,9 @@ IF (KSCALARS_NSDER_OFFSET >= 0) THEN
 #endif
   DO KGL=IBEG,IEND,IINC
     DO JF=1,KF_SCALARS
-      DO JM=0,R%NSMAX !(note that R%NSMAX <= G_NMEN(IGLG) for all IGLG)
+      DO JM=0,R%NSMAX !(note that R%NSMAX <= G%NMEN(IGLG) for all IGLG)
         IGLG = OFFSET_VAR+KGL-1
-        IF (JM <= G_NMEN(IGLG)) THEN
+        IF (JM <= G%NMEN(IGLG)) THEN
           IOFF_LAT = 1_JPIB*KF_FS*D%NSTAGTF(KGL)
           IOFF_KSCALARS_NSDER = IOFF_LAT+(KSCALARS_NSDER_OFFSET+JF-1)*(D%NSTAGTF(KGL+1)-D%NSTAGTF(KGL))
 
@@ -200,7 +199,7 @@ ENDIF
 
 !*       2.1      U AND V.
 
-ILOEN_MAX = MAXVAL(G_NLOEN)
+ILOEN_MAX = MAXVAL(G%NLOEN)
 IF (KUV_EWDER_OFFSET >= 0) THEN
 #ifdef OMPGPU
   !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) DEFAULT(NONE) &
@@ -225,8 +224,8 @@ IF (KUV_EWDER_OFFSET >= 0) THEN
         IGLG = OFFSET_VAR+KGL-1
         ! FFT transforms NLON real values to floor(NLON/2)+1 complex numbers. Hence we have
         ! to fill those floor(NLON/2)+1 values.
-        ! Truncation happens starting at G_NMEN+1. Hence, we zero-fill those values.
-        IF (JM <= G_NLOEN(IGLG)/2) THEN
+        ! Truncation happens starting at G%NMEN+1. Hence, we zero-fill those values.
+        IF (JM <= G%NLOEN(IGLG)/2) THEN
           IOFF_LAT = 1_JPIB*KF_FS*D%NSTAGTF(KGL)
           IOFF_UV = IOFF_LAT+(KUV_OFFSET+JF-1)*(D%NSTAGTF(KGL+1)-D%NSTAGTF(KGL))
           IOFF_UV_EWDER = IOFF_LAT+(KUV_EWDER_OFFSET+JF-1)*(D%NSTAGTF(KGL+1)-D%NSTAGTF(KGL))
@@ -234,7 +233,7 @@ IF (KUV_EWDER_OFFSET >= 0) THEN
           RET_REAL = 0.0_JPRBT
           RET_COMPLEX = 0.0_JPRBT
 
-          IF (JM <= G_NMEN(IGLG)) THEN
+          IF (JM <= G%NMEN(IGLG)) THEN
             ZACHTE2 = REAL(F%RACTHE(IGLG),JPRBT)
 
             RET_REAL = &
@@ -277,8 +276,8 @@ IF (KSCALARS_EWDER_OFFSET > 0) THEN
         IGLG = OFFSET_VAR+KGL-1
         ! FFT transforms NLON real values to floor(NLON/2)+1 complex numbers. Hence we have
         ! to fill those floor(NLON/2)+1 values.
-        ! Truncation happens starting at G_NMEN+1. Hence, we zero-fill those values.
-        IF (JM <= G_NLOEN(IGLG)/2) THEN
+        ! Truncation happens starting at G%NMEN+1. Hence, we zero-fill those values.
+        IF (JM <= G%NLOEN(IGLG)/2) THEN
           IOFF_LAT = 1_JPIB*KF_FS*D%NSTAGTF(KGL)
           IOFF_SCALARS_EWDER = IOFF_LAT+(KSCALARS_EWDER_OFFSET+JF-1)*(D%NSTAGTF(KGL+1)-D%NSTAGTF(KGL))
           IOFF_SCALARS = IOFF_LAT+(KSCALARS_OFFSET+JF-1)*(D%NSTAGTF(KGL+1)-D%NSTAGTF(KGL))
@@ -286,7 +285,7 @@ IF (KSCALARS_EWDER_OFFSET > 0) THEN
           RET_REAL = 0.0_JPRBT
           RET_COMPLEX = 0.0_JPRBT
 
-          IF (JM <= G_NMEN(IGLG)) THEN
+          IF (JM <= G%NMEN(IGLG)) THEN
             ZACHTE2 = REAL(F%RACTHE(IGLG),JPRBT)
 
             RET_REAL = &
@@ -294,7 +293,7 @@ IF (KSCALARS_EWDER_OFFSET > 0) THEN
             RET_COMPLEX = &
                 &  PREEL_COMPLEX(IOFF_SCALARS+2*JM+1)*ZACHTE2*REAL(JM,JPRBT)
           ENDIF
-          ! The rest from G_NMEN(IGLG+1)...MAX is zero truncated
+          ! The rest from G%NMEN(IGLG+1)...MAX is zero truncated
           PREEL_COMPLEX(IOFF_SCALARS_EWDER+2*JM+1) = RET_REAL
           PREEL_COMPLEX(IOFF_SCALARS_EWDER+2*JM+2) = RET_COMPLEX
         ENDIF
@@ -312,7 +311,6 @@ ENDIF
 !$OMP END TARGET DATA
 #endif
 !     ------------------------------------------------------------------
-END ASSOCIATE
 
 END SUBROUTINE FSC
 END MODULE FSC_MOD
