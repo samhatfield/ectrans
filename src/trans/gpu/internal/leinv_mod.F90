@@ -176,9 +176,9 @@ CONTAINS
     !$OMP TARGET DATA &
     !$OMP&              MAP(PRESENT,ALLOC:D,D_MYMS,D_NUMP) &
     !$OMP&              MAP(PRESENT,ALLOC:ZINP,ZOUTS,ZOUTA,ZINP0,ZOUTS0,ZOUTA0) &
-    !$OMP&              MAP(PRESENT,ALLOC:ZAA,ZAS,PIA) &
+    !$OMP&              MAP(PRESENT,ALLOC:PIA) &
     !$OMP&              MAP(PRESENT,ALLOC:D_OFFSETS_GEMM2) &
-    !$OMP&              MAP(TO:R)
+    !$OMP&              MAP(TO:R,FG)
 #endif
 #ifdef ACCGPU
     !$ACC DATA PRESENT(D,D_MYMS,D_NUMP) &
