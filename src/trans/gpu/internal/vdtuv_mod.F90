@@ -92,9 +92,7 @@ REAL(KIND=JPRBT) :: ZKM
 !$ACC&      PRESENT(PU, PV)
 #endif
 #ifdef OMPGPU
-!$OMP TARGET DATA                                                   &
-!$OMP&      MAP(PRESENT,ALLOC:PEPSNM, PVOR, PDIV)                   &
-!$OMP&      MAP(PRESENT,ALLOC:PU, PV) MAP(TO:R,F,D)
+!$OMP TARGET DATA MAP(ALLOC:PVOR,PDIV,PU,PV) MAP(TO:R,F,D,PEPSNM)
 #endif
 
 !     ------------------------------------------------------------------

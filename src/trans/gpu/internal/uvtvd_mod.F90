@@ -85,7 +85,7 @@ ASSOCIATE(ZEPSNM=>FG%ZEPSNM)
 !              ------------------------------------------
 
 #ifdef OMPGPU
-!$OMP TARGET DATA MAP(PRESENT,ALLOC:PU,PV,PVOR,PDIV) MAP(TO:R,FG,D)
+!$OMP TARGET DATA MAP(ALLOC:PU,PV,PVOR,PDIV) MAP(TO:R,FG,D)
 #endif
 #ifdef ACCGPU
 !$ACC DATA &

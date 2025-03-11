@@ -81,8 +81,7 @@ REAL(KIND=JPRB),    INTENT(OUT) :: PNSD(:,:,:)
 INTEGER(KIND=JPIM) :: J, JN, JI, IR, II
 
 #ifdef OMPGPU
-!$OMP TARGET DATA &
-!$OMP&              MAP(PRESENT,ALLOC:PEPSNM,PF,PNSD) MAP(TO:R,D)
+!$OMP TARGET DATA MAP(ALLOC:PF,PNSD) MAP(TO:R,D,PEPSNM)
 #endif
 #ifdef ACCGPU
 !$ACC DATA                                  &
