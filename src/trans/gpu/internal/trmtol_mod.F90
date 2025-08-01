@@ -92,7 +92,7 @@ CONTAINS
     USE YOMHOOK,                ONLY: LHOOK, DR_HOOK, JPHOOK
     USE MPL_MODULE,             ONLY: MPL_ALLTOALLV, MPL_BARRIER, MPL_ALL_MS_COMM, MPL_MYRANK
     USE TPM_DISTR,              ONLY: D, NPRTRW, NPROC, MYSETW
-    USE TPM_GEN,                ONLY: LSYNC_TRANS, NERR, LMPOFF
+    USE TPM_GEN,                ONLY: LSYNC_TRANS, NERR, LMPOFF, LSPOOF_COMMS
 #if ECTRANS_HAVE_MPI
     USE MPI_F08,                ONLY: MPI_COMM, MPI_REAL4, MPI_REAL8
     ! Missing: MPI_ALLTOALLV on purpose due to cray-mpi bug (see https://github.com/ecmwf-ifs/ectrans/pull/157)
@@ -204,9 +204,11 @@ CONTAINS
 #endif
 
 #if ECTRANS_HAVE_MPI
-      CALL MPI_ALLTOALLV(PFBUF_IN,ILENS,IOFFS,TRMTOL_DTYPE,&
-       & PFBUF,ILENR,IOFFR,TRMTOL_DTYPE,&
-       & LOCAL_COMM,IERROR)
+      IF (.NOT. LSPOOF_COMMS) THEN
+        CALL MPI_ALLTOALLV(PFBUF_IN,ILENS,IOFFS,TRMTOL_DTYPE,&
+        & PFBUF,ILENR,IOFFR,TRMTOL_DTYPE,&
+        & LOCAL_COMM,IERROR)
+      ENDIF
 #else
       CALL ABORT_TRANS("Should not be here: MPI is disabled")
 #endif

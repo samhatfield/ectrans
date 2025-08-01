@@ -132,6 +132,7 @@ logical :: lscders = .false.
 logical :: luvders = .false.
 logical :: lprint_norms = .false. ! Calculate and print spectral norms
 logical :: lmeminfo = .false. ! Show information from FIAT routine ec_meminfo at the end
+logical :: lspoof_comms = .false.
 
 integer(kind=jpim) :: nstats_mem = 0
 integer(kind=jpim) :: ntrace_stats = 0
@@ -233,7 +234,7 @@ endif
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, nlev, lvordiv, lscders, luvders, &
   & luseflt, nopt_mem_tr, nproma, verbosity, ldump_values, lprint_norms, lmeminfo, nprtrv, nprtrw, ncheck, &
-  & lpinning)
+  & lpinning, lspoof_comms)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid, ndgl, nloen)
 nflevg = nlev
@@ -403,7 +404,7 @@ call setup_trans0(kout=nout, kerr=nerr, kprintlev=merge(2, 0, verbosity == 1),  
   &               kmax_resol=nmax_resol, kpromatr=npromatr, kprgpns=nprgpns, kprgpew=nprgpew,  &
   &               kprtrw=nprtrw, ldsync_trans=lsync_trans,                                     &
   &               ldeq_regions=leq_regions, prad=zra, ldalloperm=.true., ldmpoff=.not.luse_mpi,&
-  &               kopt_memory_tr=nopt_mem_tr)
+  &               kopt_memory_tr=nopt_mem_tr,ldspoof_comms=lspoof_comms)
 call gstats(1, 1)
 
 call gstats(2, 0)
@@ -1169,7 +1170,7 @@ end subroutine
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, nlev, lvordiv, lscders, luvders, &
   &                                   luseflt, nopt_mem_tr, nproma, verbosity, ldump_values, lprint_norms, &
-  &                                   lmeminfo, nprtrv, nprtrw, ncheck, lpinning)
+  &                                   lmeminfo, nprtrv, nprtrw, ncheck, lpinning, lspoof_comms)
 
 #ifdef _OPENACC
   use openacc, only: acc_init, acc_get_device_type
@@ -1197,6 +1198,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
   integer, intent(inout) :: ncheck          ! The multiplier of the machine epsilon used as a
                                             ! tolerance for correctness checking
   logical, intent(inout) :: lpinning        ! Use memory-pinning (a.k.a. page-locked memory) to allocate fields for GPU version
+  logical, intent(inout) :: lspoof_comms    ! "Spoof" communications i.e. replace them with zeroing operations
 
   character(len=128) :: carg          ! Storage variable for command line arguments
   integer            :: iarg = 1      ! Argument index
@@ -1249,6 +1251,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
       case('--meminfo'); lmeminfo = .true.
       case('--nprtrv'); nprtrv = get_int_value('--nprtrv', iarg)
       case('--nprtrw'); nprtrw = get_int_value('--nprtrw', iarg)
+      case('--spoof-comms'); lspoof_comms = .true.
       case('-c', '--check'); ncheck = get_int_value('-c', iarg)
       case('--no-pinning'); lpinning = .False.
       case default
