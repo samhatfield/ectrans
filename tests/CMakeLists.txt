@@ -329,6 +329,15 @@ foreach( benchmark ${benchmarks} )
             OMP ${omp}
         )
         ectrans_set_test_properties( ${base_title}_nfld10_nlev20_cc )
+
+        # Check it works with 10 3D scalar fields, 20 levels, and with structured random noise
+        ecbuild_add_test( TARGET ${base_title}_nfld10_nlev20_rand
+            COMMAND ${benchmark}
+            ARGS --truncation ${t} --grid ${grid} --nfld 10 --nlev 20 --rand --check 100 --callmode ${callmode} --dump-checksums ${base_title}_nfld10_nlev20_rand ${base_args}
+            MPI ${mpi}
+            OMP ${omp}
+        )
+        ectrans_set_test_properties( ${base_title}_nfld10_nlev20_rand )
       endforeach()
     endforeach()
   endforeach()
