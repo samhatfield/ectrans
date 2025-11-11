@@ -320,6 +320,15 @@ foreach( benchmark ${benchmarks} )
           )
           ectrans_set_test_properties( ${base_title}_nfld10_nlev20 )
         endif()
+
+        # Check it works with 10 3D scalar fields, 20 levels, and with Clenshaw-Curtis quadrature
+        ecbuild_add_test( TARGET ${base_title}_nfld10_nlev20_cc
+            COMMAND ${benchmark}
+            ARGS --truncation ${t} --grid ${grid} --nfld 10 --nlev 20 --cc --check 100 --callmode ${callmode} --dump-checksums ${base_title}_nfld10_nlev20_cc ${base_args}
+            MPI ${mpi}
+            OMP ${omp}
+        )
+        ectrans_set_test_properties( ${base_title}_nfld10_nlev20_cc )
       endforeach()
     endforeach()
   endforeach()
