@@ -92,6 +92,8 @@ real(kind=jprb), pointer :: zgp(:,:,:)
 real(kind=jprb), pointer :: zgpuv(:,:,:,:)
 real(kind=jprb), pointer :: zgp3a(:,:,:,:)
 real(kind=jprb), pointer :: zgp2(:,:,:)
+real(kind=jprb), pointer :: zgp2_store(:,:,:)
+real(kind=jprb), pointer :: zgp2g(:,:)
 
 logical :: lstack = .false. ! Output stack info
 
@@ -538,6 +540,8 @@ else
   call allocator%allocate('zgpuv', zgpuv, [nproma,nflevg,inum_wind_fields,ngpblks])
   call allocator%allocate('zgp3a', zgp3a, [nproma,nflevg,inum_sc_3d_fields,ngpblks])
   call allocator%allocate('zgp2', zgp2, [nproma,inum_sc_2d_fields,ngpblks])
+  call allocator%allocate('zgp2_store', zgp2_store, [nproma,inum_sc_2d_fields,ngpblks])
+  if (myproc == 1) call allocator%allocate('zgp2g', zgp2g, [ngptotg,inum_sc_2d_fields])
 endif
 
 !===================================================================================================
@@ -699,6 +703,24 @@ do jstep = 1, iters+iters_warmup
     call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp3a(:,nflevg:nflevg,1,:), 'T', noutdump)
     if (myproc == 1) then
       deallocate(global_field)
+    endif
+  endif
+
+  !=================================================================================================
+  ! Compute the l2 norm compared with the field after the first inverse transform
+  !=================================================================================================
+
+  if (icall_mode == 2) then
+    if (jstep == 1) then
+      zgp2_store = zgp2
+    else
+      if (myproc == 1) then
+        call gath_grid(pgpg=zgp2g, kproma=nproma, kfgathg=1, kto=[1], &
+          &            pgp=zgp2_store - zgp2)
+        write(nout,*) "grid point l2 norm = ", norm2(zgp2g)
+      else
+        call gath_grid(kproma=nproma, kfgathg=1, kto=[1], pgp=zgp2_store - zgp2)
+      endif
     endif
   endif
 
@@ -1004,6 +1026,8 @@ else
   call allocator%deallocate('zgpuv', zgpuv)
   call allocator%deallocate('zgp3a', zgp3a)
   call allocator%deallocate('zgp2', zgp2)
+  call allocator%deallocate('zgp2_store', zgp2_store)
+  if (myproc == 1) call allocator%deallocate('zgp2g', zgp2g)
 endif
 
 !===================================================================================================
