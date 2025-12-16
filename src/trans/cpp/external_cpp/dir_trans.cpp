@@ -10,8 +10,12 @@
 #include <stdio.h>
 #include <iostream>
 
+// -------------------------------------------------------------------------------------------------
+// Fortran bindings
+// -------------------------------------------------------------------------------------------------
+
 extern "C" {
-void dir_trans_sp(
+  void dir_trans_sp(
     float* pspvor, float* pspdiv,
     float* pspscalar, float* pspsc3a, float* pspsc3b, float* pspsc2,
     bool ldlatlon, int kproma,
@@ -21,10 +25,19 @@ void dir_trans_sp(
     const float* pgp,
     const float* pgpuv, const float* pgp3a, const float* pgp3b, const float * pgp2) {
 
-    std::cout << "Inside dir_trans_sp" << std::endl;
-}
+    dir_trans(
+      pspvor, pspdiv,
+      pspscalar, pspsc3a, pspsc3b, pspsc2,
+      ldlatlon, kproma,
+      kvsetuv, kvsetsc,
+      kresol,
+      kvsetsc3a, kvsetsc3b, kvsetsc2,
+      pgp,
+      pgpuv, pgp3a, pgp3b, pgp2
+    );
+  }
 
-void dir_trans_dp(
+  void dir_trans_dp(
     double* pspvor, double* pspdiv,
     double* pspscalar, double* pspsc3a, double* pspsc3b, double* pspsc2,
     bool ldlatlon, int kproma,
@@ -34,6 +47,17 @@ void dir_trans_dp(
     const double* pgp,
     const double* pgpuv, const double* pgp3a, const double* pgp3b, const double * pgp2) {
 
-    std::cout << "Inside dir_trans_dp" << std::endl;
+    dir_trans(
+      pspvor, pspdiv,
+      pspscalar, pspsc3a, pspsc3b, pspsc2,
+      ldlatlon, kproma,
+      kvsetuv, kvsetsc,
+      kresol,
+      kvsetsc3a, kvsetsc3b, kvsetsc2,
+      pgp,
+      pgpuv, pgp3a, pgp3b, pgp2
+    );
+  }
 }
-}
+
+// -------------------------------------------------------------------------------------------------
