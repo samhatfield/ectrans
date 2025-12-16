@@ -140,3 +140,14 @@ install( FILES
   PERMISSIONS
   OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
+
+if( HAVE_CPP )
+  foreach( prec sp dp )
+    ecbuild_add_executable(
+      TARGET          cpp-test-program-${prec}
+      SOURCES         cpp-test-program.F90
+      LINKER_LANGUAGE Fortran
+      LIBS            fiat parkind_${prec} trans_cpp_${prec}
+    )
+  endforeach()
+endif()

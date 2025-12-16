@@ -195,6 +195,10 @@ ecbuild_add_option( FEATURE FIELD_API
                     REQUIRED_PACKAGES "field_api"
                    )
 
+ecbuild_add_option( FEATURE CPP
+                    DEFAULT OFF
+                    DESCRIPTION "Compile C++ version of ectrans" )
+
 ### Add sources
 ecbuild_override_compiler_flags(
   COMPILE_FLAGS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ectrans_compile_flags.cmake

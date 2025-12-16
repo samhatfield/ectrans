@@ -25,6 +25,10 @@ function(generate_file)
   set( jprb_gpu_dp jprd )
   set( JPRB_gpu_sp JPRM )
   set( jprb_gpu_sp jprm )
+  set( JPRB_cpp_dp JPRD )
+  set( jprb_cpp_dp jprd )
+  set( JPRB_cpp_sp JPRM )
+  set( jprb_cpp_sp jprm )
 
   add_custom_command(
     OUTPUT  ${output}
@@ -104,4 +108,7 @@ if( HAVE_CPU)
 endif()
 if( HAVE_GPU )
   add_subdirectory( gpu )
+endif()
+if( HAVE_CPP )
+  add_subdirectory( cpp )
 endif()
