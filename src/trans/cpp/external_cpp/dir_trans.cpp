@@ -10,6 +10,23 @@
 #include <stdio.h>
 #include <iostream>
 
+template <typename Real> void dir_trans(
+  Real* pspvor, Real* pspdiv,
+  Real* pspscalar, Real* pspsc3a, Real* pspsc3b, Real* pspsc2,
+  bool ldlatlon, int kproma,
+  const int* kvsetuv, const int* kvsetsc,
+  int kresol,
+  const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+  const Real* pgp,
+  const Real* pgpuv, const Real* pgp3a, const Real* pgp3b, const Real * pgp2) {
+
+  if (std::is_same<Real, float>::value) {
+    std::cout << "Inside dir_trans_sp" << std::endl;
+  } else {
+    std::cout << "Inside dir_trans_dp" << std::endl;
+  }
+}
+
 // -------------------------------------------------------------------------------------------------
 // Fortran bindings
 // -------------------------------------------------------------------------------------------------
