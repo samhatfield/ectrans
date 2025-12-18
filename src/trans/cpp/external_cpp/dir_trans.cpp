@@ -73,9 +73,7 @@ template <typename Real> void dir_trans(
         std::cerr << "dir_trans: kvsetuv(" << j << ") > nprtrv or < 1" << std::endl;
         ABOR1("dir_trans: kvsetuv too long or contains values outside range");
       }
-      if (kvsetuv[j] == mysetv) {
-        if_uv += 1;
-      }
+      if (kvsetuv[j] == mysetv) if_uv += 1;
     }
   } else {
     // No V-set decomposition -> all fields resident on a single V set
@@ -93,9 +91,7 @@ template <typename Real> void dir_trans(
         std::cerr << "dir_trans: kvsetsc(" << j << ") > nprtrv or < 1" << std::endl;
         ABOR1("dir_trans: kvsetsc too long or contains values outside range");
       }
-      if (kvsetsc[j] == mysetv) {
-        if_scalars += 1;
-      }
+      if (kvsetsc[j] == mysetv) if_scalars += 1;
     }
   } else {
     // No V-set decomposition -> all fields resident on a single V set
@@ -129,9 +125,7 @@ template <typename Real> void dir_trans(
 
   if (kvsetsc3a) {
     // Get total number of 3D scalar fields (3a)
-    if (!pspsc3a) {
-      ABOR1("dir_trans: kvsetsc3a present but not pspsc3a");
-    }
+    if (!pspsc3a) ABOR1("dir_trans: kvsetsc3a present but not pspsc3a");
     if_sc3a_g = args->ivsetsc3a_shape[0];
     if_scalars_g += if_sc3a_g * args->ispsc3a_shape[2];
     for (int j = 0; j < args->ivsetsc3a_shape[0]; ++j) {
@@ -153,9 +147,7 @@ template <typename Real> void dir_trans(
 
   if (kvsetsc3b) {
     // Get total number of 3D scalar fields (3b)
-    if (!pspsc3b) {
-      ABOR1("dir_trans: kvsetsc3b present but not pspsc3b");
-    }
+    if (!pspsc3b) ABOR1("dir_trans: kvsetsc3b present but not pspsc3b");
     if_sc3b_g = args->ivsetsc3b_shape[0];
     if_scalars_g += if_sc3b_g * args->ispsc3b_shape[2];
     for (int j = 0; j < args->ivsetsc3b_shape[0]; ++j) {
@@ -185,17 +177,13 @@ template <typename Real> void dir_trans(
 
   // Consistency checks
   if (if_uv > 0) {
-    if (!pspvor) {
-      ABOR1("dir_trans: if_uv > 0 but pspvor missing");
-    }
+    if (!pspvor) ABOR1("dir_trans: if_uv > 0 but pspvor missing");
     if (args->ispvor_shape[0] < if_uv) {
       std::cerr << "dir_trans: pspvor too short: " << args->ispvor_shape[0] << " < " << if_uv
                 << std::endl;
       ABOR1("dir_trans: pspvor too short");
     }
-    if (!pspdiv) {
-      ABOR1("dir_trans: pspvor present but pspdiv missing");
-    }
+    if (!pspdiv) ABOR1("dir_trans: pspvor present but pspdiv missing");
     if (args->ispdiv_shape[0] != if_uv) {
       std::cerr << "dir_trans: pspdiv too short: " << args->ispdiv_shape[0] << " < " << if_uv
                 << std::endl;
@@ -326,9 +314,7 @@ template <typename Real> void dir_trans(
                   << " < " << ngpblks << std::endl;
         ABOR1("dir_trans: fourth dimension of pgp3a too small");
       }
-    } else {
-      ABOR1("dir_trans: pgp3a missing");
-    }
+    } else ABOR1("dir_trans: pgp3a missing");
   }
 
   if (pgp3b && !pspsc3b) ABOR1("dir_trans: pspsc3b has to be present when pgp3b is");
@@ -354,9 +340,7 @@ template <typename Real> void dir_trans(
                   << " < " << ngpblks << std::endl;
         ABOR1("dir_trans: fourth dimension of pgp3b too small");
       }
-    } else {
-      ABOR1("dir_trans: pgp3b missing");
-    }
+    } else ABOR1("dir_trans: pgp3b missing");
   }
 
   // -----------------------------------------------------------------------------------------------
