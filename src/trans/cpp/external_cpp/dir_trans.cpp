@@ -32,7 +32,7 @@ struct args_info {
   int igpuv_shape[4];
   int igp3a_shape[4];
   int igp3b_shape[4];
-  int igp2_shape;
+  int igp2_shape[3];
 };
 
 template <typename Real> void dir_trans(
