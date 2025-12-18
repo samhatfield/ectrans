@@ -36,15 +36,15 @@ struct args_info {
 };
 
 template <typename Real> void dir_trans(
-  args_info* args,
-  Real* pspvor, Real* pspdiv,
-  Real* pspscalar, Real* pspsc3a, Real* pspsc3b, Real* pspsc2,
-  bool ldlatlon, int kproma,
-  const int* kvsetuv, const int* kvsetsc,
-  int kresol,
-  const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
-  const Real* pgp,
-  const Real* pgpuv, const Real* pgp3a, const Real* pgp3b, const Real * pgp2) {
+    args_info* args,
+    Real* pspvor, Real* pspdiv,
+    Real* pspscalar, Real* pspsc3a, Real* pspsc3b, Real* pspsc2,
+    bool ldlatlon, int kproma,
+    const int* kvsetuv, const int* kvsetsc,
+    int kresol,
+    const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+    const Real* pgp,
+    const Real* pgpuv, const Real* pgp3a, const Real* pgp3b, const Real * pgp2) {
 
   int if_uv = 0;
   int if_uv_g = 0;
@@ -100,15 +100,15 @@ template <typename Real> void dir_trans(
 
 extern "C" {
   void dir_trans_sp(
-    args_info* args,
-    float* pspvor, float* pspdiv,
-    float* pspscalar, float* pspsc3a, float* pspsc3b, float* pspsc2,
-    bool ldlatlon, int kproma,
-    const int* kvsetuv, const int* kvsetsc,
-    int kresol,
-    const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
-    const float* pgp,
-    const float* pgpuv, const float* pgp3a, const float* pgp3b, const float * pgp2) {
+      args_info* args,
+      float* pspvor, float* pspdiv,
+      float* pspscalar, float* pspsc3a, float* pspsc3b, float* pspsc2,
+      bool ldlatlon, int kproma,
+      const int* kvsetuv, const int* kvsetsc,
+      int kresol,
+      const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+      const float* pgp,
+      const float* pgpuv, const float* pgp3a, const float* pgp3b, const float * pgp2) {
 
     dir_trans(
       args,
@@ -124,15 +124,15 @@ extern "C" {
   }
 
   void dir_trans_dp(
-    args_info* args,
-    double* pspvor, double* pspdiv,
-    double* pspscalar, double* pspsc3a, double* pspsc3b, double* pspsc2,
-    bool ldlatlon, int kproma,
-    const int* kvsetuv, const int* kvsetsc,
-    int kresol,
-    const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
-    const double* pgp,
-    const double* pgpuv, const double* pgp3a, const double* pgp3b, const double * pgp2) {
+      args_info* args,
+      double* pspvor, double* pspdiv,
+      double* pspscalar, double* pspsc3a, double* pspsc3b, double* pspsc2,
+      bool ldlatlon, int kproma,
+      const int* kvsetuv, const int* kvsetsc,
+      int kresol,
+      const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+      const double* pgp,
+      const double* pgpuv, const double* pgp3a, const double* pgp3b, const double * pgp2) {
 
     dir_trans(
       args,
