@@ -14,7 +14,7 @@ ecbuild_add_library(
   TARGET          ectrans_cpp_common
   SOURCES         ${ectrans_cpp_common_src}
   LINKER_LANGUAGE CXX
-  PUBLIC_LIBS     fiat 
+  PUBLIC_LIBS     fiat
 )
 
 function( generate_backend_sources )
