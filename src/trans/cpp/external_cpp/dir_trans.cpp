@@ -10,19 +10,33 @@
 #include <stdio.h>
 #include <iostream>
 
-//  struct args_info{
-//    int* ispvor_shape, ispdiv_shape, ispscalar_shape, ispsc3a_shape, ispsc3b_shape, ispsc2_shape;
-//    int* ivsetuv_shape, ivsetsc_shape, ivsetsc3a_shape, ivsetsc3b_shape, ivsetsc2_shape;
-//    int* igp_shape, igpuv_shape, igp3a_shape, igp3b_shape, igp2_shape;
-//  };
+#include "abor1.h"
 
-struct args_info{
+const int nprtrv = 1;
+const int mysetv = 1;
+
+// Struct for storing metadata about arguments to DIR_TRANS
+struct args_info {
   int ispvor_shape[2];
+  int ispdiv_shape[2];
+  int ispscalar_shape[2];
+  int ispsc3a_shape[3];
+  int ispsc3b_shape[3];
+  int ispsc2_shape[2];
   int ivsetuv_shape[1];
+  int ivsetsc_shape[1];
+  int ivsetsc3a_shape[1];
+  int ivsetsc3b_shape[1];
+  int ivsetsc2_shape[1];
+  int igp_shape[3];
+  int igpuv_shape[4];
+  int igp3a_shape[4];
+  int igp3b_shape[4];
+  int igp2_shape;
 };
 
 template <typename Real> void dir_trans(
-  args_info args,
+  args_info* args,
   Real* pspvor, Real* pspdiv,
   Real* pspscalar, Real* pspsc3a, Real* pspsc3b, Real* pspsc2,
   bool ldlatlon, int kproma,
@@ -32,19 +46,52 @@ template <typename Real> void dir_trans(
   const Real* pgp,
   const Real* pgpuv, const Real* pgp3a, const Real* pgp3b, const Real * pgp2) {
 
-  if (std::is_same<Real, float>::value) {
-    std::cout << "Inside dir_trans_sp" << std::endl;
-  } else {
-    std::cout << "Inside dir_trans_dp" << std::endl;
-  }
+  int if_uv = 0;
+  int if_uv_g = 0;
+  int if_scalars = 0;
+  int if_scalars_g = 0;
 
   if (kvsetuv) {
-    std::cout << " kvsetuv is present" << std::endl;
-    // std::cout << args.ispvor_shape[0] << std::endl;
-    // // std::cout << args.ispvor_shape[1] << std::endl;
-    // std::cout << args.ivsetuv_shape[0] << std::endl;
-    std::cout << " done" << std::endl;
+    // Get total number of UV fields
+    if_uv_g = args->ivsetuv_shape[0];
+
+    // Determine which ones are mine
+    for (int j = 0; j < if_uv_g; ++j) {
+      if (kvsetuv[j] > nprtrv || kvsetuv[j] < 1) {
+        std::cerr << "dir_trans: kvsetuv(" << j << ") > nprtrv or < 1" << std::endl;
+        ABOR1("dir_trans: kvsetuv too long or contains values outside range");
+      }
+      if (kvsetuv[j] == mysetv) {
+        if_uv += 1;
+      }
+    }
+  } else {
+    // No V-set decomposition -> all fields resident on a single V set
+    if_uv = args->ispvor_shape[0];
+    if_uv_g = if_uv;
   }
+
+  if (kvsetsc) {
+    // Get total number of scalar fields
+    if_scalars_g = args->ivsetsc_shape[0];
+
+    // Determine which ones are mine
+    for (int j = 0; j < if_scalars_g; ++j) {
+      if (kvsetsc[j] > nprtrv || kvsetsc[j] < 1) {
+        std::cerr << "dir_trans: kvsetsc(" << j << ") > nprtrv or < 1" << std::endl;
+        ABOR1("dir_trans: kvsetsc too long or contains values outside range");
+      }
+      if (kvsetsc[j] == mysetv) {
+        if_scalars += 1;
+      }
+    }
+  } else {
+    // No V-set decomposition -> all fields resident on a single V set
+    if_scalars = args->ispscalar_shape[0];
+    if_scalars_g = if_scalars;
+  }
+
+  std::cout << "This rank has " << if_uv << " of " << if_uv_g << " UV fields" << std::endl;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -53,7 +100,7 @@ template <typename Real> void dir_trans(
 
 extern "C" {
   void dir_trans_sp(
-    args_info args,
+    args_info* args,
     float* pspvor, float* pspdiv,
     float* pspscalar, float* pspsc3a, float* pspsc3b, float* pspsc2,
     bool ldlatlon, int kproma,
@@ -77,7 +124,7 @@ extern "C" {
   }
 
   void dir_trans_dp(
-    args_info args,
+    args_info* args,
     double* pspvor, double* pspdiv,
     double* pspscalar, double* pspsc3a, double* pspsc3b, double* pspsc2,
     bool ldlatlon, int kproma,
