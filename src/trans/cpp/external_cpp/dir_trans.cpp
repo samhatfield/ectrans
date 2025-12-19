@@ -41,7 +41,7 @@ struct args_info {
 
 template <typename Real> void dir_trans(
     args_info* args,
-    int idlatlon, int kproma, int kresol,
+    int kdlatlon, int kproma, int kresol,
     Real* pspvor, Real* pspdiv,
     Real* pspscalar, Real* pspsc3a, Real* pspsc3b, Real* pspsc2,
     const int* kvsetuv, const int* kvsetsc,
@@ -167,7 +167,7 @@ template <typename Real> void dir_trans(
   }
 
   if (kproma >= 0) nproma = kproma;
-  if (idlatlon >= 0) latlon = idlatlon;
+  if (kdlatlon >= 0) latlon = kdlatlon;
 
   ngpblks = (ngptot - 1) / nproma + 1;
 
@@ -360,7 +360,7 @@ template <typename Real> void dir_trans(
 extern "C" {
   void dir_trans_sp(
       args_info* args,
-      int idlatlon, int kproma, int kresol,
+      int kdlatlon, int kproma, int kresol,
       float* pspvor, float* pspdiv,
       float* pspscalar, float* pspsc3a, float* pspsc3b, float* pspsc2,
       const int* kvsetuv, const int* kvsetsc,
@@ -370,7 +370,7 @@ extern "C" {
 
     dir_trans(
       args,
-      idlatlon, kproma, kresol,
+      kdlatlon, kproma, kresol,
       pspvor, pspdiv,
       pspscalar, pspsc3a, pspsc3b, pspsc2,
       kvsetuv, kvsetsc,
@@ -382,7 +382,7 @@ extern "C" {
 
   void dir_trans_dp(
       args_info* args,
-      int idlatlon, int kproma, int kresol,
+      int kdlatlon, int kproma, int kresol,
       double* pspvor, double* pspdiv,
       double* pspscalar, double* pspsc3a, double* pspsc3b, double* pspsc2,
       const int* kvsetuv, const int* kvsetsc,
@@ -392,7 +392,7 @@ extern "C" {
 
     dir_trans(
       args,
-      idlatlon, kproma, kresol,
+      kdlatlon, kproma, kresol,
       pspvor, pspdiv,
       pspscalar, pspsc3a, pspsc3b, pspsc2,
       kvsetuv, kvsetsc,
