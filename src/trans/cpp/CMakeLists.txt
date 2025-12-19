@@ -6,15 +6,18 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-ecbuild_list_add_pattern( LIST ectrans_cpp_common_src GLOB external_cpp/*.cpp QUIET )
-
 # Define C++ common library, which contains all the C++ sources and requires no precision
 # preprocessing
+ecbuild_list_add_pattern( LIST ectrans_cpp_common_src GLOB external_cpp/*.cpp QUIET )
 ecbuild_add_library(
   TARGET          ectrans_cpp_common
   SOURCES         ${ectrans_cpp_common_src}
   LINKER_LANGUAGE CXX
   PUBLIC_LIBS     fiat
+)
+target_include_directories(
+  ectrans_cpp_common
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/internal
 )
 
 function( generate_backend_sources )
