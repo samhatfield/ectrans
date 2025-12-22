@@ -10,7 +10,10 @@
 #include <stdio.h>
 #include <iostream>
 
+#include "abor1.h"
+#include "General.h"
 #include "Constants.h"
+#include "Distributed.h"
 
 // -------------------------------------------------------------------------------------------------
 // Fortran binding
@@ -59,7 +62,13 @@ extern "C" {
     if (ksync_trans >= 0) lsync_trans = ksync_trans;
     if (ktrans_sync_level >= 0) ntrans_sync_level = ktrans_sync_level;
     if (keq_regions >= 0) leq_regions = keq_regions;
+    if (kalloperm >= 0) lalloperm = kalloperm;
     if (kopt_memory_tr >= 0) nstack_memory_tr = kopt_memory_tr;
+
+    General::get_instance().init(
+      nout, nerr, nprintlev, nmax_resol, npromatr, lalloperm, lmpoff, lsync_trans,
+      ntrans_sync_level, kopt_memory_tr
+    );
 
     // Set Earth radius
     double default_earth_radius = 6371229.0;
@@ -68,6 +77,13 @@ extern "C" {
     } else {
       Constants::get_instance().set_earth_radius(default_earth_radius);
     }
+
+    // Initialise resolution-agnostic parallelisation parameters
+    Distributed::get_instance().init(nprgpns, nprgpew, nprtrw, leq_regions);
+
+    if (*k_regions_ns > 0) *k_regions_ns = Distributed::get_instance().get_n_regions_ns();
+    if (*k_regions_ew > 0) *k_regions_ew = Distributed::get_instance().get_n_regions_ew();
+    if (k_regions) k_regions = Distributed::get_instance().get_n_regions();
   }
 }
 
