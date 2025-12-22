@@ -6,6 +6,9 @@
 // granted to it by virtue of its status as an intergovernmental organisation
 // nor does it submit to any jurisdiction.
 
+#ifndef GENERAL_H
+#define GENERAL_H
+
 // Class for storing general configuration parameters
 class General {
   private:
@@ -59,3 +62,5 @@ class General {
     outstream = _outstream;
   }
 };
+
+#endif // GENERAL_H

@@ -6,6 +6,9 @@
 // granted to it by virtue of its status as an intergovernmental organisation
 // nor does it submit to any jurisdiction.
 
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
 // Class for storing physical constants
 class Constants {
   private:
@@ -41,3 +44,5 @@ class Constants {
     earth_radius = _earth_radius;
   }
 };
+
+#endif // CONSTANTS_H
