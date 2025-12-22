@@ -8,7 +8,7 @@
 
 # Define C++ common library, which contains all the C++ sources and requires no precision
 # preprocessing
-ecbuild_list_add_pattern( LIST ectrans_cpp_common_src GLOB external_cpp/*.cpp QUIET )
+ecbuild_list_add_pattern( LIST ectrans_cpp_common_src GLOB external_cpp/*.cpp internal/*.cpp QUIET )
 ecbuild_add_library(
   TARGET          ectrans_cpp_common
   SOURCES         ${ectrans_cpp_common_src}
