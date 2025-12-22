@@ -81,8 +81,8 @@ extern "C" {
     // Initialise resolution-agnostic parallelisation parameters
     Distributed::get_instance().init(nprgpns, nprgpew, nprtrw, leq_regions);
 
-    if (*k_regions_ns > 0) *k_regions_ns = Distributed::get_instance().get_n_regions_ns();
-    if (*k_regions_ew > 0) *k_regions_ew = Distributed::get_instance().get_n_regions_ew();
+    if (*k_regions_ns >= 0) *k_regions_ns = Distributed::get_instance().get_n_regions_ns();
+    if (*k_regions_ew >= 0) *k_regions_ew = Distributed::get_instance().get_n_regions_ew();
     if (k_regions) k_regions = Distributed::get_instance().get_n_regions();
   }
 }
