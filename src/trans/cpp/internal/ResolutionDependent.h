@@ -41,16 +41,18 @@ class ResolutionDependent {
   }
 
   [[nodiscard]]
-  Dimensions get_dimensions(int resol) const noexcept {
+  Dimensions& get_dimensions(int resol) {
     if (resol <= dim.size()) {
-      return dim.at(resol - 1);
+      return dim[resol - 1];
     } else {
       ABOR1("ResolutionDependent.get_dimensions: resol requested does not exist");
     }
   }
 
-  int init_resol(int truncation, int num_latitudes, int kdlon) noexcept {
-    dim.push_back(Dimensions(truncation, num_latitudes, kdlon));
+  int init_resol(
+    int truncation, int num_latitudes, int max_lons_per_lat, int* num_lons_per_lat
+  ) noexcept {
+    dim.push_back(Dimensions(truncation, num_latitudes, max_lons_per_lat, num_lons_per_lat));
 
     return dim.size();
   }

@@ -11,8 +11,8 @@
 #include "General.h"
 #include "ResolutionDependent.h"
 
-template <typename Real> void setup_trans(int ksmax, int kdgl, int kdlon, int* kresol) {
-  int resolution_handle = ResolutionDependent::get_instance().init_resol(ksmax, kdgl, kdlon);
+template <typename Real> void setup_trans(int ksmax, int kdgl, int kdlon, int* kloen, int* kresol) {
+  int resolution_handle = ResolutionDependent::get_instance().init_resol(ksmax, kdgl, kdlon, kloen);
 
   if (General::get_instance().get_print_level() > 0) {
     std::cout << "Defined resolution " << resolution_handle << std::endl;
@@ -28,12 +28,12 @@ template <typename Real> void setup_trans(int ksmax, int kdgl, int kdlon, int* k
 // -------------------------------------------------------------------------------------------------
 
 extern "C" {
-  void setup_trans_sp(int ksmax, int kdgl, int kdlon, int* kresol) {
-    setup_trans<float>(ksmax, kdgl, kdlon, kresol);
+  void setup_trans_sp(int ksmax, int kdgl, int kdlon, int* kloen, int* kresol) {
+    setup_trans<float>(ksmax, kdgl, kdlon, kloen, kresol);
   }
 
-  void setup_trans_dp(int ksmax, int kdgl, int kdlon, int* kresol) {
-    setup_trans<double>(ksmax, kdgl, kdlon, kresol);
+  void setup_trans_dp(int ksmax, int kdgl, int kdlon, int* kloen, int* kresol) {
+    setup_trans<double>(ksmax, kdgl, kdlon, kloen, kresol);
   }
 }
 
