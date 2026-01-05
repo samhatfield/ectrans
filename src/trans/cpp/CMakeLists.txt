@@ -6,6 +6,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+ecbuild_find_package( NAME Kokkos VERSION 4.2 REQUIRED )
+ecbuild_find_package( NAME flcl REQUIRED )
+
 # Define C++ common library, which contains all the C++ sources and requires no precision
 # preprocessing
 ecbuild_list_add_pattern( LIST ectrans_cpp_common_src GLOB external_cpp/*.cpp internal/*.cpp QUIET )
@@ -13,7 +16,7 @@ ecbuild_add_library(
   TARGET          ectrans_cpp_common
   SOURCES         ${ectrans_cpp_common_src}
   LINKER_LANGUAGE CXX
-  PUBLIC_LIBS     fiat
+  PUBLIC_LIBS     fiat flcl::flcl
 )
 target_include_directories(
   ectrans_cpp_common
@@ -74,7 +77,7 @@ foreach( prec dp sp )
       SOURCES         ${ectrans_cpp_${prec}_src}
       LINKER_LANGUAGE Fortran
       PUBLIC_INCLUDES $<INSTALL_INTERFACE:include/ectrans>
-      PUBLIC_LIBS     ectrans_cpp_common ectrans_cpp_${prec}_includes
+      PUBLIC_LIBS     ectrans_cpp_common ectrans_cpp_${prec}_includes flcl::flcl
     )
 
     if( prec STREQUAL sp )
