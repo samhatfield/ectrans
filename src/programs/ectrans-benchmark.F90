@@ -493,7 +493,7 @@ call initialize_spectral_field(nsmax, zspscalar)
 
 ! Determine start and end slice points for grid point arrays when they are passed back to dir_trans
 ipgp_start = 1
-ipgp_end = (2 + nfld) * nflevg + 1
+ipgp_end = (nfld) * nflevg + 1
 ipgpuv_start = 1
 ipgpuv_end = 2
 
@@ -628,11 +628,7 @@ do jstep = 1, iters+iters_warmup
 
   ztstep1(jstep) = timef()
   call gstats(4,0)
-  call inv_trans(pspvor=zspvor, pspdiv=zspdiv, pspscalar=zspscalar, pgp=zgp, &
-    &            kvsetuv=ivset, kvsetsc=ivsetsc, &
-    &            ldscders=lscders, ldvorgp=lvordiv, lddivgp=lvordiv, lduvder=luvder, &
-    &            kproma=nproma)
-
+  call inv_trans(pspscalar=zspscalar, pgp=zgp, kvsetsc=ivsetsc, kproma=nproma)
   call gstats(4,1)
 
   ztstep1(jstep) = (timef() - ztstep1(jstep))/1000.0_jprd
@@ -644,8 +640,7 @@ do jstep = 1, iters+iters_warmup
   ztstep2(jstep) = timef()
 
   call gstats(5,0)
-  call dir_trans(pgp=zgp(:,ipgp_start:ipgp_end,:), pspvor=zspvor, pspdiv=zspdiv, &
-    &            pspscalar=zspscalar, kvsetuv=ivset, kvsetsc=ivsetsc, kproma=nproma)
+  call dir_trans(pgp=zgp(:,ipgp_start:ipgp_end,:), pspscalar=zspscalar, kproma=nproma)
 
   call gstats(5,1)
 
