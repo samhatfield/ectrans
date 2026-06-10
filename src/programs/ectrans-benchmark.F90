@@ -465,12 +465,6 @@ do jb = 1, nprtrv
   enddo
 enddo
 
-! Initialize vorticity and divergence - same for both call modes
-call allocator%allocate('zspvor', zspvor, [nflevl,nspec2])
-call allocator%allocate('zspdiv', zspdiv, [nflevl,nspec2])
-call initialize_spectral_field(nsmax, zspvor)
-call initialize_spectral_field(nsmax, zspdiv)
-
 ! Compute spectral distribution variables for call mode 1's combined 2D/3D spectral array
 allocate(ivsetsc(nfld*nflevg+1))
 do i = 1, nfld
@@ -494,25 +488,6 @@ call initialize_spectral_field(nsmax, zspscalar)
 ! Determine start and end slice points for grid point arrays when they are passed back to dir_trans
 ipgp_start = 1
 ipgp_end = (nfld) * nflevg + 1
-ipgpuv_start = 1
-ipgpuv_end = 2
-
-! Also enable vorticity divergence?
-if (lvordiv) then
-  inum_wind_fields = 4 ! Four fields - U, V, vorticity, divergence
-  ! If lvordiv, skip the vorticity and divergence elements when passing zgp
-  ! These two come first when enabled
-  ipgp_start = ipgp_start + 2 * nflevg
-  ipgp_end = ipgp_end + 2 * nflevg
-  ipgpuv_start = ipgpuv_start + 2
-  ipgpuv_end = ipgpuv_end + 2
-else
-  ! Otherwise just U and V
-  inum_wind_fields = 2
-endif
-
-! Also make room for East-West derivatives of winds?
-if (luvder) inum_wind_fields = inum_wind_fields + 2
 
 ! We always have our nfld 3D scalar fields
 inum_sc_3d_fields = nfld
@@ -520,14 +495,8 @@ inum_sc_3d_fields = nfld
 ! We always have one 2D scalar field
 inum_sc_2d_fields = 1
 
-! Also make room for North-South and East-West derivatives of scalar fields
-if (lscders) then
-  inum_sc_3d_fields = inum_sc_3d_fields * 3
-  inum_sc_2d_fields = inum_sc_2d_fields * 3
-endif
-
 ! Finally, allocate grid point arrays
-itotal_fields = nflevg * (inum_wind_fields + inum_sc_3d_fields) + inum_sc_2d_fields
+itotal_fields = nflevg * (inum_sc_3d_fields) + inum_sc_2d_fields
 call allocator%allocate('zgp', zgp, [nproma,itotal_fields,ngpblks])
 
 #if USE_FIELD_API
@@ -549,27 +518,11 @@ endif
 !===================================================================================================
 
 if (lprint_norms .or. ncheck > 0) then
-  allocate(znormvor(nflevg))
-  allocate(znormvor1(nflevg))
-  allocate(znormdiv(nflevg))
-  allocate(znormdiv1(nflevg))
-
-  call specnorm(pspec=zspvor(1:nflevl,:), pnorm=znormvor1, kvset=ivset)
-  call specnorm(pspec=zspdiv(1:nflevl,:), pnorm=znormdiv1, kvset=ivset)
-
   allocate(znormscalar(nfld*nflevg+1))
   allocate(znormscalar1(nfld*nflevg+1))
   call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar1, kvset=ivsetsc)
 
   if (verbosity >= 1 .and. myproc == 1) then
-    do ifld = 1, nflevg
-      write(nout,'("norm zspvor( ",i4,",:)   = ",f20.15)') ifld, znormvor1(ifld)
-      write(nout,'("0x",Z16.16)') transfer(znormvor1(ifld),0_jpim)
-    enddo
-    do ifld = 1, nflevg
-      write(nout,'("norm zspdiv( ",i4,",:)   = ",f20.15)') ifld, znormdiv1(ifld)
-      write(nout,'("0x",Z16.16)') transfer(znormdiv1(ifld),0_jpim)
-    enddo
     do ifld = 1, nfld*nflevg+1
       write(nout,'("norm zspscalar(",i4,",:,1) = ",f20.15)') ifld, znormscalar1(ifld)
       write(nout,'("0x",Z16.16)') transfer(znormscalar1(ifld),0_jpim)
@@ -654,18 +607,13 @@ do jstep = 1, iters+iters_warmup
 
   if (lprint_norms) then
     call gstats(6,0)
-    call specnorm(pspec=zspvor(1:nflevl,:), pnorm=znormvor, kvset=ivset)
-    call specnorm(pspec=zspdiv(1:nflevl,:), pnorm=znormdiv, kvset=ivset)
 
     call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar, kvset=ivsetsc)
 
     if (myproc == 1) then
-      zmaxerr(1) = maxval(abs((znormvor1 / znormvor) - 1.0_jprb))
-      zmaxerr(2) = maxval(abs((znormdiv1 / znormdiv) - 1.0_jprb))
       zmaxerr(3) = maxval(abs((znormscalar1 / znormscalar) - 1.0_jprb))
-      write(nout,'("time step ",i6," took", f8.4," | zspvor max err=",e10.3,&
-      & " | zspdiv max err=",e10.3," | zspscalar max err=",e10.3)') &
-      &  jstep, ztstep(jstep), zmaxerr(1), zmaxerr(2), zmaxerr(3)
+      write(nout,'("time step ",i6," took", f8.4," | zspscalar max err=",e10.3)') &
+      &  jstep, ztstep(jstep), zmaxerr(3)
     endif
     call gstats(6,1)
   else
@@ -683,27 +631,11 @@ write(nout,'(a)') '======= End of spectral transforms  ======='
 write(nout,'(" ")')
 
 if (lprint_norms .or. ncheck > 0) then
-  call specnorm(pspec=zspvor(1:nflevl,:), pnorm=znormvor, kvset=ivset)
-  call specnorm(pspec=zspdiv(1:nflevl,:), pnorm=znormdiv, kvset=ivset)
 
   call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar, kvset=ivsetsc)
 
   if (myproc == 1) then
     zmaxerr = -99.0_jprd
-    zmaxerr(1) = maxval(abs((real(znormvor1,jprd) / (real(znormvor,jprd)) - 1.0_jprd)))
-    if (verbosity >= 1) then
-      do ifld = 1, nflevg
-        write(nout,'("norm zspvor( ",i4,")     = ",f20.15)') ifld, znormvor(ifld)
-        write(nout,'("0x",Z16.16)') transfer(znormvor(ifld), 0_jpim)
-      enddo
-    endif
-    zmaxerr(2) = maxval(abs((real(znormdiv1,jprd) / (real(znormdiv,jprd)) - 1.0_jprd)))
-    if (verbosity >= 1) then
-      do ifld = 1, nflevg
-        write(nout,'("norm zspdiv( ",i4,",:)   = ",f20.15)') ifld, znormdiv(ifld)
-        write(nout,'("0x",Z16.16)') transfer(znormdiv(ifld), 0_jpim)
-      enddo
-    endif
     zmaxerr(3) = maxval(abs((znormscalar1 / znormscalar) - 1.0_jprb))
     if (verbosity >= 1) then
       do ifld = 1, nfld*nflevg+1
@@ -716,8 +648,6 @@ if (lprint_norms .or. ncheck > 0) then
     zmaxerrg = maxval(zmaxerr)
 
     if (verbosity >= 1) write(nout,*)
-    write(nout,'("max error zspvor(1:nlev,:)    = ",e10.3)') zmaxerr(1)
-    write(nout,'("max error zspdiv(1:nlev,:)    = ",e10.3)') zmaxerr(2)
     write(nout,'("max error zspscalar(1:nlev,:,1) = ",e10.3)') zmaxerr(3)
 
     write(nout,*)
@@ -853,9 +783,6 @@ if (lfield_api) then
   call delete_fields_lists(ylf)
 endif
 #endif
-
-call allocator%deallocate('zspvor', zspvor)
-call allocator%deallocate('zspdiv', zspdiv)
 
 call allocator%deallocate('zspscalar', zspscalar)
 
