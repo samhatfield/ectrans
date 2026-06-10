@@ -399,14 +399,14 @@ CONTAINS
 #ifdef ACCGPU
     !$ACC WAIT(1)
 #endif
-    IF (PRESENT(PGP)) THEN
-#ifdef OMPGPU
-        !$OMP TARGET UPDATE TO(PGP) IF (.NOT. LLPGP_ON_GPU)
-#endif
-#ifdef ACCGPU
-        !$ACC UPDATE DEVICE(PGP) IF (.NOT. LLPGP_ON_GPU)
-#endif
-    ENDIF
+!    IF (PRESENT(PGP)) THEN
+!#ifdef OMPGPU
+!        !$OMP TARGET UPDATE TO(PGP) IF (.NOT. LLPGP_ON_GPU)
+!#endif
+!#ifdef ACCGPU
+!        !$ACC UPDATE DEVICE(PGP) IF (.NOT. LLPGP_ON_GPU)
+!#endif
+!    ENDIF
     IF (PRESENT(PGPUV)) THEN
 #ifdef OMPGPU
         !$OMP TARGET UPDATE TO(PGPUV) IF (.NOT. LLPGP_ON_GPU)
