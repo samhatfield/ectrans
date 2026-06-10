@@ -193,7 +193,7 @@ character(len=128)  :: cchecksums_path = ''
 
 integer(kind=jpim) :: iend
 integer(kind=jpim) :: ierr
-integer :: icall_mode = 2
+integer :: icall_mode = 1
 integer :: inum_wind_fields, inum_sc_3d_fields, inum_sc_2d_fields, itotal_fields
 integer :: ipgp_start, ipgp_end, ipgpuv_start, ipgpuv_end, islice
 
@@ -471,31 +471,21 @@ call allocator%allocate('zspdiv', zspdiv, [nflevl,nspec2])
 call initialize_spectral_field(nsmax, zspvor)
 call initialize_spectral_field(nsmax, zspdiv)
 
-! Initialize spectral arrays differently depending on call mode
-if (icall_mode == 1) then
-  ! Compute spectral distribution variables for call mode 1's combined 2D/3D spectral array
-  allocate(ivsetsc(nfld*nflevg+1))
-  do i = 1, nfld
-    ilev = 0
-    do jb = 1, nprtrv
-      do jlev = 1, numll(jb)
-        ilev = ilev + 1
-        ivsetsc(ilev + (i - 1)*nflevg) = jb
-      enddo
+! Compute spectral distribution variables for call mode 1's combined 2D/3D spectral array
+allocate(ivsetsc(nfld*nflevg+1))
+do i = 1, nfld
+  ilev = 0
+  do jb = 1, nprtrv
+    do jlev = 1, numll(jb)
+      ilev = ilev + 1
+      ivsetsc(ilev + (i - 1)*nflevg) = jb
     enddo
   enddo
-  ivsetsc(nfld*nflevg+1) = 1
+enddo
+ivsetsc(nfld*nflevg+1) = 1
 
-  call allocator%allocate('zspscalar', zspscalar, [count(ivsetsc == mysetv),nspec2])
-  call initialize_spectral_field(nsmax, zspscalar)
-else
-  call allocator%allocate('zspsc3a', zspsc3a, [nflevl,nspec2,nfld])
-  call allocator%allocate('zspsc2', zspsc2, [1,nspec2])
-  do i = 1, nfld
-    call initialize_spectral_field(nsmax, zspsc3a(:,:,i))
-  enddo
-  call initialize_spectral_field(nsmax, zspsc2)
-endif
+call allocator%allocate('zspscalar', zspscalar, [count(ivsetsc == mysetv),nspec2])
+call initialize_spectral_field(nsmax, zspscalar)
 
 !===================================================================================================
 ! Allocate gridpoint arrays
@@ -537,14 +527,8 @@ if (lscders) then
 endif
 
 ! Finally, allocate grid point arrays
-if (icall_mode == 1) then
-  itotal_fields = nflevg * (inum_wind_fields + inum_sc_3d_fields) + inum_sc_2d_fields
-  call allocator%allocate('zgp', zgp, [nproma,itotal_fields,ngpblks])
-else
-  call allocator%allocate('zgpuv', zgpuv, [nproma,nflevg,inum_wind_fields,ngpblks])
-  call allocator%allocate('zgp3a', zgp3a, [nproma,nflevg,inum_sc_3d_fields,ngpblks])
-  call allocator%allocate('zgp2', zgp2, [nproma,inum_sc_2d_fields,ngpblks])
-endif
+itotal_fields = nflevg * (inum_wind_fields + inum_sc_3d_fields) + inum_sc_2d_fields
+call allocator%allocate('zgp', zgp, [nproma,itotal_fields,ngpblks])
 
 #if USE_FIELD_API
 if (lfield_api) then
@@ -573,18 +557,9 @@ if (lprint_norms .or. ncheck > 0) then
   call specnorm(pspec=zspvor(1:nflevl,:), pnorm=znormvor1, kvset=ivset)
   call specnorm(pspec=zspdiv(1:nflevl,:), pnorm=znormdiv1, kvset=ivset)
 
-  if (icall_mode == 1) then
-    allocate(znormscalar(nfld*nflevg+1))
-    allocate(znormscalar1(nfld*nflevg+1))
-    call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar1, kvset=ivsetsc)
-  else
-    allocate(znormsc3a(nflevg))
-    allocate(znormsc3a1(nflevg))
-    allocate(znormsc2(1))
-    allocate(znormsc21(1))
-    if (nfld > 0) call specnorm(pspec=zspsc3a(1:nflevl,:,1), pnorm=znormsc3a1, kvset=ivset)
-    call specnorm(pspec=zspsc2(1:1,:), pnorm=znormsc21, kvset=ivsetsc2)
-  endif
+  allocate(znormscalar(nfld*nflevg+1))
+  allocate(znormscalar1(nfld*nflevg+1))
+  call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar1, kvset=ivsetsc)
 
   if (verbosity >= 1 .and. myproc == 1) then
     do ifld = 1, nflevg
@@ -595,21 +570,10 @@ if (lprint_norms .or. ncheck > 0) then
       write(nout,'("norm zspdiv( ",i4,",:)   = ",f20.15)') ifld, znormdiv1(ifld)
       write(nout,'("0x",Z16.16)') transfer(znormdiv1(ifld),0_jpim)
     enddo
-    if (icall_mode == 1) then
-      do ifld = 1, nfld*nflevg+1
-        write(nout,'("norm zspscalar(",i4,",:,1) = ",f20.15)') ifld, znormscalar1(ifld)
-        write(nout,'("0x",Z16.16)') transfer(znormscalar1(ifld),0_jpim)
-      enddo
-    else
-      if (nfld > 0) then
-        do ifld = 1, nflevg
-          write(nout,'("norm zspsc3a(",i4,",:,1) = ",f20.15)') ifld, znormsc3a1(ifld)
-          write(nout,'("0x",Z16.16)') transfer(znormsc3a1(ifld),0_jpim)
-        enddo
-      endif
-      write(nout,'("norm zspsc2( ",i4,",:)   = ",f20.15)') 1, znormsc21(1)
-      write(nout,'("0x",Z16.16)') transfer(znormsc21(1),0_jpim)
-    endif
+    do ifld = 1, nfld*nflevg+1
+      write(nout,'("norm zspscalar(",i4,",:,1) = ",f20.15)') ifld, znormscalar1(ifld)
+      write(nout,'("0x",Z16.16)') transfer(znormscalar1(ifld),0_jpim)
+    enddo
   endif
 endif
 
@@ -664,49 +628,18 @@ do jstep = 1, iters+iters_warmup
 
   ztstep1(jstep) = timef()
   call gstats(4,0)
-
-  if (lfield_api) then
-#if USE_FIELD_API
-    call inv_trans_field_api(kresol=1, ydfspscalar=ylf%spscalar, ydfspvor=ylf%spvor, &
-      &                      ydfspdiv=ylf%spdiv, ydfscalar=ylf%scalar, ydfu=ylf%u, ydfv=ylf%v, &
-      &                      ydfvor=ylf%vor, ydfdiv=ylf%div, ydfscalar_ns=ylf%scalar_ns, &
-      &                      ydfscalar_ew=ylf%scalar_ew, ydfu_ew=ylf%u_ew, ydfv_ew=ylf%v_ew, &
-      &                      kgptot = ngptot)
-    call synchost_rdonly_wrapped_fields(ywflds)
-#else
-    call abor1('ectrans_benchmark: No field API support')
-#endif
-  else if (icall_mode == 1) then
-    call inv_trans(pspvor=zspvor, pspdiv=zspdiv, pspscalar=zspscalar, pgp=zgp, &
-      &            kvsetuv=ivset, kvsetsc=ivsetsc, &
-      &            ldscders=lscders, ldvorgp=lvordiv, lddivgp=lvordiv, lduvder=luvder, &
-      &            kproma=nproma)
-  else
-    call inv_trans(pspvor=zspvor, pspdiv=zspdiv, pspsc3a=zspsc3a, pspsc2=zspsc2, pgpuv=zgpuv, &
-      &            pgp3a=zgp3a, pgp2=zgp2, &
-      &            kvsetuv=ivset, kvsetsc2=ivsetsc2, kvsetsc3a=ivset, &
-      &            ldscders=lscders, ldvorgp=lvordiv, lddivgp=lvordiv, lduvder=luvder, kproma=nproma)
-  endif
+  call inv_trans(pspvor=zspvor, pspdiv=zspdiv, pspscalar=zspscalar, pgp=zgp, &
+    &            kvsetuv=ivset, kvsetsc=ivsetsc, &
+    &            ldscders=lscders, ldvorgp=lvordiv, lddivgp=lvordiv, lduvder=luvder, &
+    &            kproma=nproma)
 
   if (ldump_checksums) then
     ! Remove trash at end of last block
     iend = ngptot - nproma * (ngpblks - 1)
-    write (checksums_filename,'(A)') trim(cchecksums_path)//'_inv_trans.checksums'
-    if (icall_mode == 1) then
-      ! Remove trash at end of last block
-      zgp (iend+1:, :, ngpblks) = 0
-      call dump_checksums_pgp(filename=checksums_filename, noutdump=noutdump_checksum, &
-                            & jstep=jstep, myproc=myproc, nproma=nproma, ngptotg=ngptotg, &
-                            & zgp=zgp)
-    else
-      ! Remove trash at end of last block
-      zgpuv (iend+1:, :, :, ngpblks) = 0
-      zgp3a (iend+1:, :, :, ngpblks) = 0
-      zgp2 (iend+1:, :, ngpblks) = 0
-      call dump_checksums_pgp_uv_3a_2(filename=checksums_filename, noutdump=noutdump_checksum, &
-                                    & jstep=jstep, myproc=myproc, nproma=nproma, ngptotg=ngptotg, &
-                                    & zgpuv=zgpuv, zgp3a=zgp3a, zgp2=zgp2)
-    endif
+    zgp (iend+1:, :, ngpblks) = 0
+    write(checksums_filename,'(A)') trim(cchecksums_path)//'_inv_trans.checksums'
+    call dump_checksums_pgp(filename=checksums_filename, noutdump=noutdump_checksum, jstep=jstep, &
+      &                     myproc=myproc, nproma=nproma, ngptotg=ngptotg, zgp=zgp)
   endif
 
   call gstats(4,1)
@@ -722,20 +655,13 @@ do jstep = 1, iters+iters_warmup
     if (myproc == 1) then
       allocate(global_field(ngptotg,1))
     endif
-    if (icall_mode == 1) then
-      islice = (ipgpuv_end - 1) * nflevg
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,islice:islice,:), 'U', noutdump)
-      islice = ipgpuv_end * nflevg
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,islice:islice,:), 'V', noutdump)
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,ipgp_end:ipgp_end,:), 'S', noutdump)
-      islice = ipgp_end - 1
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,islice:islice,:), 'T', noutdump)
-    else
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgpuv(:,nflevg:nflevg,1,:), 'U', noutdump)
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgpuv(:,nflevg:nflevg,2,:), 'V', noutdump)
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp2(:,1:1,:), 'S', noutdump)
-      call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp3a(:,nflevg:nflevg,1,:), 'T', noutdump)
-    endif
+    islice = (ipgpuv_end - 1) * nflevg
+    call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,islice:islice,:), 'U', noutdump)
+    islice = ipgpuv_end * nflevg
+    call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,islice:islice,:), 'V', noutdump)
+    call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,ipgp_end:ipgp_end,:), 'S', noutdump)
+    islice = ipgp_end - 1
+    call dump_gridpoint_field(jstep, myproc, nproma, global_field, zgp(:,islice:islice,:), 'T', noutdump)
     if (myproc == 1) then
       deallocate(global_field)
     endif
@@ -748,38 +674,14 @@ do jstep = 1, iters+iters_warmup
   ztstep2(jstep) = timef()
 
   call gstats(5,0)
-
-  if (lfield_api) then
-#if USE_FIELD_API
-    call dir_trans_field_api(kresol=1, ydfscalar=ylf%scalar, ydfu=ylf%u, ydfv=ylf%v, &
-      &                      ydfspscalar=ylf%spscalar, ydfspvor=ylf%spvor, ydfspdiv=ylf%spdiv)
-    call synchost_rdonly_wrapped_fields(ywflds)
-#else
-    call abor1('ectrans_benchmark: No field API support')
-#endif
-  else if (icall_mode == 1) then
-    call dir_trans(pgp=zgp(:,ipgp_start:ipgp_end,:), pspvor=zspvor, pspdiv=zspdiv, &
-      &            pspscalar=zspscalar, kvsetuv=ivset, kvsetsc=ivsetsc, kproma=nproma)
-  else
-    call dir_trans(pgpuv=zgpuv(:,:,ipgpuv_start:ipgpuv_end,:), &
-      &            pgp3a=zgp3a(:,:,1:nfld,:), pgp2=zgp2(:,1:1,:), &
-      &            pspvor=zspvor, pspdiv=zspdiv, pspsc3a=zspsc3a, pspsc2=zspsc2, &
-      &            kvsetuv=ivset, kvsetsc2=ivsetsc2, kvsetsc3a=ivset, kproma=nproma)
-  endif
+  call dir_trans(pgp=zgp(:,ipgp_start:ipgp_end,:), pspvor=zspvor, pspdiv=zspdiv, &
+    &            pspscalar=zspscalar, kvsetuv=ivset, kvsetsc=ivsetsc, kproma=nproma)
 
   if (ldump_checksums) then
-    write (checksums_filename,'(A)') trim(cchecksums_path)//'_dir_trans.checksums'
-
-    if (icall_mode == 1) then
-      call dump_checksums_psp(filename=checksums_filename, noutdump=noutdump_checksum, &
-        &                     jstep=jstep, myproc=myproc, ivset=ivset, ivsetsc=ivsetsc, &
-        &                     nspec2g=nspec2g, zspvor=zspvor, zspdiv=zspdiv, zspscalar=zspscalar)
-    else
-      call dump_checksums_psp_3a_2(filename=checksums_filename, noutdump=noutdump_checksum, &
-        &                          jstep=jstep, myproc=myproc, ivset=ivset, ivsetsc2=ivsetsc2, &
-        &                          nspec2g=nspec2g, zspvor=zspvor, zspdiv=zspdiv, zspsc3a=zspsc3a, &
-        &                          zspsc2=zspsc2)
-    endif
+      write(checksums_filename,'(A)') trim(cchecksums_path)//'_dir_trans.checksums'
+      call dump_checksums_psp(filename=checksums_filename, noutdump=noutdump_checksum, jstep=jstep, &
+        &                     myproc=myproc, ivset=ivset, ivsetsc=ivsetsc, nspec2g=nspec2g, &
+        &                     zspvor=zspvor, zspdiv=zspdiv, zspscalar=zspscalar)
   endif
   call gstats(5,1)
 
@@ -796,34 +698,15 @@ do jstep = 1, iters+iters_warmup
     call specnorm(pspec=zspvor(1:nflevl,:), pnorm=znormvor, kvset=ivset)
     call specnorm(pspec=zspdiv(1:nflevl,:), pnorm=znormdiv, kvset=ivset)
 
-    if (icall_mode == 1) then
-      call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar, kvset=ivsetsc)
-    else
-      if (nfld > 0) call specnorm(pspec=zspsc3a(1:nflevl,:,1), pnorm=znormsc3a, kvset=ivset)
-      call specnorm(pspec=zspsc2(1:1,:), pnorm=znormsc2, kvset=ivsetsc2)
-    endif
+    call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar, kvset=ivsetsc)
 
     if (myproc == 1) then
       zmaxerr(1) = maxval(abs((znormvor1 / znormvor) - 1.0_jprb))
       zmaxerr(2) = maxval(abs((znormdiv1 / znormdiv) - 1.0_jprb))
-      if (icall_mode == 1) then
-        zmaxerr(3) = maxval(abs((znormscalar1 / znormscalar) - 1.0_jprb))
-        write(nout,'("time step ",i6," took", f8.4," | zspvor max err=",e10.3,&
-        & " | zspdiv max err=",e10.3," | zspscalar max err=",e10.3)') &
-        &  jstep, ztstep(jstep), zmaxerr(1), zmaxerr(2), zmaxerr(3)
-      else
-        zmaxerr(4) = maxval(abs((znormsc21 / znormsc2) - 1.0_jprb))
-        if (nfld > 0) then
-          zmaxerr(3) = maxval(abs((znormsc3a1 / znormsc3a) - 1.0_jprb))
-          write(nout,'("time step ",i6," took", f8.4," | zspvor max err=",e10.3,&
-          & " | zspdiv max err=",e10.3," | zspsc3a max err=",e10.3," | zspsc2 max err=",e10.3)') &
-          &  jstep, ztstep(jstep), zmaxerr(1), zmaxerr(2), zmaxerr(3), zmaxerr(4)
-        else
-          write(nout,'("time step ",i6," took", f8.4," | zspvor max err=",e10.3,&
-                      & " | zspdiv max err=",e10.3," | zspsc2 max err=",e10.3)') &
-                      &  jstep, ztstep(jstep), zmaxerr(1), zmaxerr(2), zmaxerr(4)
-        endif
-      endif
+      zmaxerr(3) = maxval(abs((znormscalar1 / znormscalar) - 1.0_jprb))
+      write(nout,'("time step ",i6," took", f8.4," | zspvor max err=",e10.3,&
+      & " | zspdiv max err=",e10.3," | zspscalar max err=",e10.3)') &
+      &  jstep, ztstep(jstep), zmaxerr(1), zmaxerr(2), zmaxerr(3)
     endif
     call gstats(6,1)
   else
@@ -844,12 +727,7 @@ if (lprint_norms .or. ncheck > 0) then
   call specnorm(pspec=zspvor(1:nflevl,:), pnorm=znormvor, kvset=ivset)
   call specnorm(pspec=zspdiv(1:nflevl,:), pnorm=znormdiv, kvset=ivset)
 
-  if (icall_mode == 1) then
-    call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar, kvset=ivsetsc)
-  else
-    if (nfld > 0) call specnorm(pspec=zspsc3a(1:nflevl,:,1), pnorm=znormsc3a, kvset=ivset)
-    call specnorm(pspec=zspsc2(1:1,:), pnorm=znormsc2, kvset=ivsetsc2)
-  endif
+  call specnorm(pspec=zspscalar(:,:), pnorm=znormscalar, kvset=ivsetsc)
 
   if (myproc == 1) then
     zmaxerr = -99.0_jprd
@@ -867,29 +745,12 @@ if (lprint_norms .or. ncheck > 0) then
         write(nout,'("0x",Z16.16)') transfer(znormdiv(ifld), 0_jpim)
       enddo
     endif
-    if (icall_mode == 1) then
-      zmaxerr(3) = maxval(abs((znormscalar1 / znormscalar) - 1.0_jprb))
-      if (verbosity >= 1) then
-        do ifld = 1, nfld*nflevg+1
-          write(nout,'("norm znormscalar( ",i4,",:)   = ",f20.15)') ifld, znormscalar(ifld)
-          write(nout,'("0x",Z16.16)') transfer(znormscalar(ifld), 0_jpim)
-        enddo
-      endif
-    else
-      zmaxerr(4) = maxval(abs((znormsc21 / znormsc2) - 1.0_jprb))
-      if (verbosity >= 1) then
-        write(nout,'("norm znormsc2( ",i4,",:)   = ",f20.15)') 1, znormsc2(1)
-        write(nout,'("0x",Z16.16)') transfer(znormsc2(1), 0_jpim)
-      endif
-      if (nfld > 0) then
-        zmaxerr(3) = maxval(abs((znormsc3a1 / znormsc3a) - 1.0_jprb))
-        if (verbosity >= 1) then
-          do ifld = 1, nflevg
-            write(nout,'("norm zspsc3a(",i4,",:,1) = ",f20.15)') ifld, znormsc3a(ifld)
-            write(nout,'("0x",Z16.16)') transfer(znormsc3a(ifld), 0_jpim)
-          enddo
-        endif
-      endif
+    zmaxerr(3) = maxval(abs((znormscalar1 / znormscalar) - 1.0_jprb))
+    if (verbosity >= 1) then
+      do ifld = 1, nfld*nflevg+1
+        write(nout,'("norm znormscalar( ",i4,",:)   = ",f20.15)') ifld, znormscalar(ifld)
+        write(nout,'("0x",Z16.16)') transfer(znormscalar(ifld), 0_jpim)
+      enddo
     endif
 
     ! maximum error across all fields
@@ -898,12 +759,8 @@ if (lprint_norms .or. ncheck > 0) then
     if (verbosity >= 1) write(nout,*)
     write(nout,'("max error zspvor(1:nlev,:)    = ",e10.3)') zmaxerr(1)
     write(nout,'("max error zspdiv(1:nlev,:)    = ",e10.3)') zmaxerr(2)
-    if (icall_mode == 1) then
-      write(nout,'("max error zspscalar(1:nlev,:,1) = ",e10.3)') zmaxerr(3)
-    else
-      if (nfld > 0) write(nout,'("max error zspsc3a(1:nlev,:,1) = ",e10.3)') zmaxerr(3)
-      write(nout,'("max error zspsc2(1:1,:)       = ",e10.3)') zmaxerr(4)
-    endif
+    write(nout,'("max error zspscalar(1:nlev,:,1) = ",e10.3)') zmaxerr(3)
+
     write(nout,*)
     write(nout,'("max error combined =          = ",e10.3)') zmaxerrg
     write(nout,*)
@@ -1041,20 +898,9 @@ endif
 call allocator%deallocate('zspvor', zspvor)
 call allocator%deallocate('zspdiv', zspdiv)
 
-if (icall_mode == 1) then
-  call allocator%deallocate('zspscalar', zspscalar)
-else
-  call allocator%deallocate('zspsc3a', zspsc3a)
-  call allocator%deallocate('zspsc2', zspsc2)
-endif
+call allocator%deallocate('zspscalar', zspscalar)
 
-if (icall_mode == 1) then
-  call allocator%deallocate('zgp', zgp)
-else
-  call allocator%deallocate('zgpuv', zgpuv)
-  call allocator%deallocate('zgp3a', zgp3a)
-  call allocator%deallocate('zgp2', zgp2)
-endif
+call allocator%deallocate('zgp', zgp)
 
 !===================================================================================================
 
@@ -1379,11 +1225,11 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, iters_warmup, nfld, n
       case('--nprtrw'); nprtrw = get_int_value('--nprtrw', iarg)
       case('-c', '--check'); ncheck = get_int_value('-c', iarg)
       case('--no-pinning'); lpinning = .False.
-      case('--field-api'); lfield_api = .True.
+      case('--field-api'); call parsing_failed("--field-api not supported in this program")
       case('--callmode')
           icall_mode = get_int_value('--callmode', iarg)
-          if (icall_mode < 1 .or. icall_mode > 2) then
-            call parsing_failed("Invalid argument for --callmode: must be 1 or 2")
+          if (icall_mode /= 1) then
+            call parsing_failed("Only call mode 1 support in this program")
           end if
       case('--deallocate-foubuf-temps'); lalloperm = .false.
       case default
