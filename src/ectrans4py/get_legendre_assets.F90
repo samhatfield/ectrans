@@ -1,8 +1,9 @@
 SUBROUTINE GET_LEGENDRE_ASSETS(KRETURNCODE, KSIZEJ, KTRUNC, KSLOEN, KSPOLEGL, KLOEN, KNUMMAXRESOL, &
-  &                            KNMENG, PGW, PRPNM)
+  &                            KNMENG, PGW, PMU, PRPNM)
 ! ** PURPOSE
 !    Simplified wrapper to TRANS_INQ for obtaining arrays necessary for performing Legendre transform
-!    (Gaussian weights, Legendre polynomials and NMENG (cutoff zonal wavenumber for each latitude))
+!    (Gaussian weights, sines of Gaussian latitudes, Legendre polynomials and NMENG
+!    (cutoff zonal wavenumber for each latitude))
 !
 ! ** DUMMY ARGUMENTS
 !    KSIZEJ: number of latitudes in grid-point space
@@ -13,6 +14,7 @@ SUBROUTINE GET_LEGENDRE_ASSETS(KRETURNCODE, KSIZEJ, KTRUNC, KSLOEN, KSPOLEGL, KL
 !    KNUMMAXRESOL: maximum number of troncatures handled
 !    KNMENG: cut-off zonal wavenumber
 !    PGW: Gaussian weights
+!    PMU: sines of the Gaussian latitudes
 !    PRPNM: Legendre polynomials
 !
 ! ** AUTHOR
@@ -29,6 +31,7 @@ INTEGER(KIND=8), DIMENSION(KSLOEN), INTENT(IN) :: KLOEN
 INTEGER(KIND=8), INTENT(IN) :: KNUMMAXRESOL
 INTEGER(KIND=8), DIMENSION(KSLOEN), INTENT(OUT) :: KNMENG
 REAL(KIND=8), DIMENSION(KSLOEN), INTENT(OUT) :: PGW
+REAL(KIND=8), DIMENSION(KSLOEN), INTENT(OUT) :: PMU
 REAL(KIND=8), DIMENSION(KSLOEN/2,KSPOLEGL), INTENT(OUT) :: PRPNM
 !
 ! II. Local variables declaration
@@ -41,6 +44,7 @@ LOGICAL :: LLSTOP
 INTEGER :: IIDENTRESOL
 INTEGER, DIMENSION(KSLOEN) :: INMENG
 REAL(KIND=8), DIMENSION(KSLOEN) :: ZGW
+REAL(KIND=8), DIMENSION(KSLOEN) :: ZMU
 REAL(KIND=8), DIMENSION(KSLOEN/2,KSPOLEGL) :: ZRPNM
 REAL(KIND=8) :: ZDELTAX, ZDELTAY
 #include "trans_inq.h"
@@ -61,9 +65,10 @@ CALL SPEC_SETUP4PY(KRETURNCODE, ISIZEI, ISIZEJ, IPHYSICALSIZEI, IPHYSICALSIZEJ, 
                   &ITRUNCX, ITRUNCY, INUMMAXRESOL, ILOEN, .FALSE., SIZE(ILOEN), &
                   &ZDELTAX, ZDELTAY, IIDENTRESOL, LLSTOP)
 IF (.NOT. LLSTOP) THEN
-  CALL TRANS_INQ(KRESOL=IIDENTRESOL, KNMENG=INMENG, PGW=ZGW, PRPNM=ZRPNM)
+  CALL TRANS_INQ(KRESOL=IIDENTRESOL, KNMENG=INMENG, PGW=ZGW, PMU=ZMU, PRPNM=ZRPNM)
   KNMENG=INMENG
   PGW=ZGW
+  PMU=ZMU
   PRPNM=ZRPNM
 ENDIF
 !
