@@ -42,23 +42,48 @@ elif system == "Darwin":
 else:
     raise NotImplementedError("ectrans4py does not support Windows")
 
-lib_basename = f"libectrans4py_dp.{platform_ext}"  # local name of library in the directory
+# The package may be built single-precision (libectrans4py_sp, linking trans_sp)
+# and/or double-precision (libectrans4py_dp, linking trans_dp). Select with the
+# env var ECTRANS4PY_PRECISION={single,double}; otherwise prefer whichever is
+# installed (double first, for backward compatibility). The precision fixes the
+# floating-point type of the field data crossing the interface (see _REAL below).
 LD_LIBRARY_PATH = [p for p in os.environ.get('LD_LIBRARY_PATH', '').split(':') if p != '']
 lpath = LD_LIBRARY_PATH + [
     os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib'),
     os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib64'),
         ]
-for d in lpath:
-    shared_objects_library = os.path.join(d, lib_basename)
-    if os.path.exists(shared_objects_library):
+
+
+def _find_library(basename):
+    for d in lpath:
+        candidate = os.path.join(d, basename)
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
+_requested = os.environ.get('ECTRANS4PY_PRECISION', '').lower()
+_precisions = {'single': 'sp', 'double': 'dp'}.get(_requested)
+_precisions = [_precisions] if _precisions else ['dp', 'sp']  # default preference
+shared_objects_library = None
+_prec = None
+for _p in _precisions:
+    shared_objects_library = _find_library(f"libectrans4py_{_p}.{platform_ext}")
+    if shared_objects_library is not None:
+        _prec = _p
         break
-    else:
-        shared_objects_library = None
 if shared_objects_library is None:
-    msg = ' '.join(["'{}' was not found in any of potential locations: {}.",
-                    "You can specify a different location using env var LD_LIBRARY_PATH"])
-    msg = msg.format(lib_basename, str(lpath))
-    raise FileNotFoundError(msg)
+    _tried = [f"libectrans4py_{p}.{platform_ext}" for p in _precisions]
+    raise FileNotFoundError(
+        f"None of {_tried} was found in any of {lpath}. You can specify a "
+        "different location using env var LD_LIBRARY_PATH, or the precision "
+        "using ECTRANS4PY_PRECISION={single,double}.")
+
+# Floating-point type of the field data (spectral / grid-point) crossing the
+# Fortran interface (the JPRB arrays): float32 for the single-precision build,
+# float64 for the double. Geometry (Gaussian latitudes/weights, Legendre
+# polynomials) and resolution deltas remain double regardless.
+_REAL = np.float32 if _prec == 'sp' else np.float64
 ctypesFF, handle = ctypesForFortran.ctypesForFortranFactory(shared_objects_library)
 
 # Initialization
@@ -539,8 +564,8 @@ def dist_spec4py(KSPEC2G, KSPEC2, KFLD, KFROM, PSPECG):
              (np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, (KFLD,), IN),
-             (np.float64, (KFLD, KSPEC2G), IN),
-             (np.float64, (KFLD, KSPEC2), OUT)],
+             (_REAL, (KFLD, KSPEC2G), IN),
+             (_REAL, (KFLD, KSPEC2), OUT)],
             None)
 
 
@@ -554,8 +579,8 @@ def gath_spec4py(KSPEC2G, KSPEC2, KFLD, KTO, PSPEC):
              (np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, (KFLD,), IN),
-             (np.float64, (KFLD, KSPEC2), IN),
-             (np.float64, (KFLD, KSPEC2G), OUT)],
+             (_REAL, (KFLD, KSPEC2), IN),
+             (_REAL, (KFLD, KSPEC2G), OUT)],
             None)
 
 
@@ -569,8 +594,8 @@ def dist_grid4py(KGPTOTG, KGPTOT, KFLD, KFROM, PGPG):
              (np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, (KFLD,), IN),
-             (np.float64, (KFLD, KGPTOTG), IN),
-             (np.float64, (KFLD, KGPTOT), OUT)],
+             (_REAL, (KFLD, KGPTOTG), IN),
+             (_REAL, (KFLD, KGPTOT), OUT)],
             None)
 
 
@@ -584,8 +609,8 @@ def gath_grid4py(KGPTOTG, KGPTOT, KFLD, KTO, PGP):
              (np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, (KFLD,), IN),
-             (np.float64, (KFLD, KGPTOT), IN),
-             (np.float64, (KFLD, KGPTOTG), OUT)],
+             (_REAL, (KFLD, KGPTOT), IN),
+             (_REAL, (KFLD, KGPTOTG), OUT)],
             None)
 
 
@@ -603,8 +628,8 @@ def inv_trans_scalar_dist4py(KSPEC2, KGPTOT, KFLD, PSPEC):
             [(np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KSPEC2), IN),
-             (np.float64, (KFLD, KGPTOT), OUT)],
+             (_REAL, (KFLD, KSPEC2), IN),
+             (_REAL, (KFLD, KGPTOT), OUT)],
             None)
 
 
@@ -618,10 +643,10 @@ def inv_trans_scalar_ders_dist4py(KSPEC2, KGPTOT, KFLD, PSPEC):
             [(np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KSPEC2), IN),
-             (np.float64, (KFLD, KGPTOT), OUT),
-             (np.float64, (KFLD, KGPTOT), OUT),
-             (np.float64, (KFLD, KGPTOT), OUT)],
+             (_REAL, (KFLD, KSPEC2), IN),
+             (_REAL, (KFLD, KGPTOT), OUT),
+             (_REAL, (KFLD, KGPTOT), OUT),
+             (_REAL, (KFLD, KGPTOT), OUT)],
             None)
 
 
@@ -634,8 +659,8 @@ def dir_trans_scalar_dist4py(KSPEC2, KGPTOT, KFLD, PGP):
             [(np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KGPTOT), IN),
-             (np.float64, (KFLD, KSPEC2), OUT)],
+             (_REAL, (KFLD, KGPTOT), IN),
+             (_REAL, (KFLD, KSPEC2), OUT)],
             None)
 
 
@@ -648,10 +673,10 @@ def inv_trans_uv_dist4py(KSPEC2, KGPTOT, KFLD, PSPVOR, PSPDIV):
             [(np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KSPEC2), IN),
-             (np.float64, (KFLD, KSPEC2), IN),
-             (np.float64, (KFLD, KGPTOT), OUT),
-             (np.float64, (KFLD, KGPTOT), OUT)],
+             (_REAL, (KFLD, KSPEC2), IN),
+             (_REAL, (KFLD, KSPEC2), IN),
+             (_REAL, (KFLD, KGPTOT), OUT),
+             (_REAL, (KFLD, KGPTOT), OUT)],
             None)
 
 
@@ -664,10 +689,10 @@ def dir_trans_uv_dist4py(KSPEC2, KGPTOT, KFLD, PGPU, PGPV):
             [(np.int64, None, IN),
              (np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KGPTOT), IN),
-             (np.float64, (KFLD, KGPTOT), IN),
-             (np.float64, (KFLD, KSPEC2), OUT),
-             (np.float64, (KFLD, KSPEC2), OUT)],
+             (_REAL, (KFLD, KGPTOT), IN),
+             (_REAL, (KFLD, KGPTOT), IN),
+             (_REAL, (KFLD, KSPEC2), OUT),
+             (_REAL, (KFLD, KSPEC2), OUT)],
             None)
 
 
@@ -683,8 +708,8 @@ def specnorm4py(KSPEC2, KFLD, PSPEC):
     return ([KSPEC2, KFLD, PSPEC],
             [(np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KSPEC2), IN),
-             (np.float64, (KFLD,), OUT)],
+             (_REAL, (KFLD, KSPEC2), IN),
+             (_REAL, (KFLD,), OUT)],
             None)
 
 
@@ -696,10 +721,10 @@ def gpnorm_trans4py(KGPTOT, KFLD, PGP):
     return ([KGPTOT, KFLD, PGP],
             [(np.int64, None, IN),
              (np.int64, None, IN),
-             (np.float64, (KFLD, KGPTOT), IN),
-             (np.float64, (KFLD,), OUT),
-             (np.float64, (KFLD,), OUT),
-             (np.float64, (KFLD,), OUT)],
+             (_REAL, (KFLD, KGPTOT), IN),
+             (_REAL, (KFLD,), OUT),
+             (_REAL, (KFLD,), OUT),
+             (_REAL, (KFLD,), OUT)],
             None)
 
 

@@ -14,6 +14,11 @@ setup(
     cmake_args=[
         '-DENABLE_ETRANS=ON',
         '-DENABLE_ECTRANS4PY=ON',
+        # Double-precision build by default (libectrans4py_dp). For the
+        # single-precision library (libectrans4py_sp) -- e.g. for distributed
+        # NWP use -- build with -DENABLE_SINGLE_PRECISION=ON
+        # -DENABLE_DOUBLE_PRECISION=OFF; the Python layer then loads it and uses
+        # float32 field data. (Building both precisions at once is not supported.)
         '-DENABLE_SINGLE_PRECISION=OFF',
         '-DENABLE_OMP=ON',
         '-DFFTW_USE_STATIC_LIBS=ON',

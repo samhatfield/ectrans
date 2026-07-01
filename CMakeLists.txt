@@ -183,7 +183,7 @@ endif()
 
 ecbuild_add_option( FEATURE ECTRANS4PY
                     DEFAULT OFF
-                    CONDITION HAVE_ETRANS AND HAVE_DOUBLE_PRECISION
+                    CONDITION HAVE_ETRANS
                     DESCRIPTION "Compile ectrans4py interface routines for python binding w/ ctypesForFortran" )
 
 
