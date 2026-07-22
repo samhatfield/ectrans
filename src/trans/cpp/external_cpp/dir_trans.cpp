@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "flcl-cxx.hpp"
-
 #include "abor1.h"
 
 const int nprtrv = 1;
@@ -22,6 +20,7 @@ bool latlon;
 int ngpblks;
 
 // Struct for storing metadata about arguments to DIR_TRANS
+namespace {
 struct args_info {
   int ispvor_shape[2];
   int ispdiv_shape[2];
@@ -40,13 +39,17 @@ struct args_info {
   int igp3b_shape[4];
   int igp2_shape[3];
 };
+}  // namespace
 
+// The optional scalar/logical arguments are passed as pointers which are null when the
+// corresponding argument was not present in the Fortran call.
 template <typename Real> void dir_trans(
     args_info* args,
-    int kdlatlon, int kproma, int kresol, flcl_ndarray_t* kvsetuv,
+    const bool* kdlatlon, const int* kproma, const int* kresol,
     Real* pspvor, Real* pspdiv,
     Real* pspscalar, Real* pspsc3a, Real* pspsc3b, Real* pspsc2,
-    const int* kvsetsc, const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+    const int* kvsetuv, const int* kvsetsc, const int* kvsetsc3a, const int* kvsetsc3b,
+    const int* kvsetsc2,
     const Real* pgp,
     const Real* pgpuv, const Real* pgp3a, const Real* pgp3b, const Real * pgp2) {
 
@@ -167,8 +170,8 @@ template <typename Real> void dir_trans(
   //   nf_sc3b = args->ispsc3b_shape[0];
   // }
 
-  // if (kproma >= 0) nproma = kproma;
-  // if (kdlatlon >= 0) latlon = kdlatlon;
+  // if (kproma) nproma = *kproma;
+  // if (kdlatlon) latlon = *kdlatlon;
 
   // ngpblks = (ngptot - 1) / nproma + 1;
 
@@ -361,19 +364,20 @@ template <typename Real> void dir_trans(
 extern "C" {
   void dir_trans_sp(
       args_info* args,
-      int kdlatlon, int kproma, int kresol, flcl_ndarray_t* kvsetuv,
+      const bool* kdlatlon, const int* kproma, const int* kresol,
       float* pspvor, float* pspdiv,
       float* pspscalar, float* pspsc3a, float* pspsc3b, float* pspsc2,
-      const int* kvsetsc, const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+      const int* kvsetuv, const int* kvsetsc, const int* kvsetsc3a, const int* kvsetsc3b,
+      const int* kvsetsc2,
       const float* pgp,
       const float* pgpuv, const float* pgp3a, const float* pgp3b, const float * pgp2) {
 
     dir_trans(
       args,
-      kdlatlon, kproma, kresol, kvsetuv,
+      kdlatlon, kproma, kresol,
       pspvor, pspdiv,
       pspscalar, pspsc3a, pspsc3b, pspsc2,
-      kvsetsc, kvsetsc3a, kvsetsc3b, kvsetsc2,
+      kvsetuv, kvsetsc, kvsetsc3a, kvsetsc3b, kvsetsc2,
       pgp,
       pgpuv, pgp3a, pgp3b, pgp2
     );
@@ -381,19 +385,20 @@ extern "C" {
 
   void dir_trans_dp(
       args_info* args,
-      int kdlatlon, int kproma, int kresol, flcl_ndarray_t* kvsetuv,
+      const bool* kdlatlon, const int* kproma, const int* kresol,
       double* pspvor, double* pspdiv,
       double* pspscalar, double* pspsc3a, double* pspsc3b, double* pspsc2,
-      const int* kvsetsc, const int* kvsetsc3a, const int* kvsetsc3b, const int* kvsetsc2,
+      const int* kvsetuv, const int* kvsetsc, const int* kvsetsc3a, const int* kvsetsc3b,
+      const int* kvsetsc2,
       const double* pgp,
       const double* pgpuv, const double* pgp3a, const double* pgp3b, const double * pgp2) {
 
     dir_trans(
       args,
-      kdlatlon, kproma, kresol, kvsetuv,
+      kdlatlon, kproma, kresol,
       pspvor, pspdiv,
       pspscalar, pspsc3a, pspsc3b, pspsc2,
-      kvsetsc, kvsetsc3a, kvsetsc3b, kvsetsc2,
+      kvsetuv, kvsetsc, kvsetsc3a, kvsetsc3b, kvsetsc2,
       pgp,
       pgpuv, pgp3a, pgp3b, pgp2
     );

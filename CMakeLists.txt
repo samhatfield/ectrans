@@ -113,9 +113,13 @@ ecbuild_add_option( FEATURE GPU
                     DESCRIPTION "Compile GPU version of ectrans (Requires OpenACC or sufficient OpenMP offloading support)"
                     CONDITION (HAVE_HIP OR HAVE_CUDA) AND (HAVE_ACC OR HAVE_OMP) )
 
-# Check CPU or GPU is enabled, and if not, abort
-if( (NOT HAVE_CPU) AND (NOT HAVE_GPU) )
-  ecbuild_critical("Please enable one or both of the CPU and GPU features")
+ecbuild_add_option( FEATURE CPP
+                    DEFAULT OFF
+                    DESCRIPTION "Compile C++ version of ectrans" )
+
+# Check any backends are enabled
+if( (NOT HAVE_CPU) AND (NOT HAVE_GPU) AND (NOT HAVE_CPP) )
+  ecbuild_critical("Please enable one or more of the CPU, GPU, and CPP features")
 endif()
 
 if( HAVE_GPU )
@@ -195,9 +199,7 @@ ecbuild_add_option( FEATURE FIELD_API
                     REQUIRED_PACKAGES "field_api"
                    )
 
-ecbuild_add_option( FEATURE CPP
-                    DEFAULT OFF
-                    DESCRIPTION "Compile C++ version of ectrans" )
+
 
 ### Add sources
 ecbuild_override_compiler_flags(

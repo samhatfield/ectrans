@@ -18,10 +18,13 @@
 // -------------------------------------------------------------------------------------------------
 
 extern "C" {
+  // Each optional argument is passed as a pointer which is null when the corresponding argument was
+  // not present in the Fortran call.
   void setup_trans0(
-    int kout, int kerr, int kprintlev, int kmax_resol, int kpromatr, int kprgpns, int kprgpew,
-    int kprtrw, int kmpoff, int ksync_trans, int ktrans_sync_level, int keq_regions, double prad,
-    int kalloperm, int kopt_memory_tr, int* k_regions_ns, int* k_regions_ew, int* k_regions) {
+    int* kout, int* kerr, int* kprintlev, int* kmax_resol, int* kpromatr, int* kprgpns,
+    int* kprgpew, int* kprtrw, bool* ldmpoff, bool* ldsync_trans, int* ktrans_sync_level,
+    bool* ldeq_regions, double* prad, bool* ldalloperm, int* kopt_memory_tr, int* k_regions_ns,
+    int* k_regions_ew, int* k_regions) {
 
     // Default values
     int nout = 6;
@@ -42,36 +45,36 @@ extern "C" {
     bool lalloperm = false;
     int nstack_memory_tr = 0;
 
-    if (kout >= 0) nout = kout;
-    if (kerr >= 0) nerr = kerr;
-    if (kprintlev >= 0) nprintlev = kprintlev;
+    if (kout) nout = *kout;
+    if (kerr) nerr = *kerr;
+    if (kprintlev) nprintlev = *kprintlev;
 
     if (nprintlev > 0) std::cout << "Entering routine setup_trans0" << std::endl;
 
-    if (kmax_resol >= 0) nmax_resol = kmax_resol;
-    if (kpromatr >= 0) {
-      if (kpromatr % 2 != 0) ABOR1("setup_trans0: kpromatr must be a multiple of 2");
-      npromatr = kpromatr;
+    if (kmax_resol) nmax_resol = *kmax_resol;
+    if (kpromatr) {
+      if (*kpromatr % 2 != 0) ABOR1("setup_trans0: kpromatr must be a multiple of 2");
+      npromatr = *kpromatr;
     }
-    if (kprgpns >= 0) nprgpns = kprgpns;
-    if (kprgpew >= 0) nprgpew = kprgpew;
-    if (kprtrw >= 0) nprtrw = kprtrw;
-    if (kmpoff >= 0) lmpoff = kmpoff;
-    if (ksync_trans >= 0) lsync_trans = ksync_trans;
-    if (ktrans_sync_level >= 0) ntrans_sync_level = ktrans_sync_level;
-    if (keq_regions >= 0) leq_regions = keq_regions;
-    if (kalloperm >= 0) lalloperm = kalloperm;
-    if (kopt_memory_tr >= 0) nstack_memory_tr = kopt_memory_tr;
+    if (kprgpns) nprgpns = *kprgpns;
+    if (kprgpew) nprgpew = *kprgpew;
+    if (kprtrw) nprtrw = *kprtrw;
+    if (ldmpoff) lmpoff = *ldmpoff;
+    if (ldsync_trans) lsync_trans = *ldsync_trans;
+    if (ktrans_sync_level) ntrans_sync_level = *ktrans_sync_level;
+    if (ldeq_regions) leq_regions = *ldeq_regions;
+    if (ldalloperm) lalloperm = *ldalloperm;
+    if (kopt_memory_tr) nstack_memory_tr = *kopt_memory_tr;
 
     General::get_instance().init(
       nout, nerr, nprintlev, nmax_resol, npromatr, lalloperm, lmpoff, lsync_trans,
-      ntrans_sync_level, kopt_memory_tr
+      ntrans_sync_level, nstack_memory_tr
     );
 
     // Set Earth radius
     double default_earth_radius = 6371229.0;
-    if (prad > 0.0) {
-      Constants::get_instance().set_earth_radius(prad);
+    if (prad && *prad > 0.0) {
+      Constants::get_instance().set_earth_radius(*prad);
     } else {
       Constants::get_instance().set_earth_radius(default_earth_radius);
     }
@@ -79,8 +82,8 @@ extern "C" {
     // Initialise resolution-agnostic parallelisation parameters
     Distributed::get_instance().init(nprgpns, nprgpew, nprtrw, leq_regions);
 
-    if (*k_regions_ns >= 0) *k_regions_ns = Distributed::get_instance().get_n_regions_ns();
-    if (*k_regions_ew >= 0) *k_regions_ew = Distributed::get_instance().get_n_regions_ew();
+    if (k_regions_ns) *k_regions_ns = Distributed::get_instance().get_n_regions_ns();
+    if (k_regions_ew) *k_regions_ew = Distributed::get_instance().get_n_regions_ew();
     if (k_regions) k_regions = Distributed::get_instance().get_n_regions();
   }
 }
