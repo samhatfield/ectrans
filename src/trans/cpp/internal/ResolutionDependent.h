@@ -22,7 +22,8 @@ class ResolutionDependent {
     inline static ResolutionDependent* instance = nullptr;
 
     // Members
-    std::vector<Dimensions> dim;
+    std::vector<Dimensions> dimension_list;
+    std::vector<Legendre> legendre_list;
 
   public:
     static ResolutionDependent& get_instance() {
@@ -41,24 +42,35 @@ class ResolutionDependent {
   }
 
   [[nodiscard]]
-  Dimensions& get_dimensions(int resol) {
-    if (resol <= dim.size()) {
-      return dim[resol - 1];
+  Dimensions& get_dimension_list(int resol) {
+    if (resol <= dimension_list.size()) {
+      return dimension_list[resol - 1];
     } else {
       ABOR1("ResolutionDependent.get_dimensions: resol requested does not exist");
     }
   }
 
-  int init_resol(
-    int truncation, int num_latitudes, int max_lons_per_lat, int* num_lons_per_lat
-  ) noexcept {
-    dim.push_back(Dimensions(truncation, num_latitudes, max_lons_per_lat, num_lons_per_lat));
+  [[nodiscard]]
+  Legendre& get_legendre_list(int resol) {
+    if (resol <= legendre_list.size()) {
+      return legendre_list[resol - 1];
+    } else {
+      ABOR1("ResolutionDependent.get_legendre: resol requested does not exist");
+    }
+  }
 
-    return dim.size();
+  int init_resol(
+    int truncation, int num_latitudes, int* max_lons_per_lat, int* num_lons_per_lat
+  ) noexcept {
+    dimension_list.push_back(Dimensions(truncation, num_latitudes, max_lons_per_lat, num_lons_per_lat));
+    legendre_list.push_back(Legendre());
+
+
+    return dimension_list.size();
   }
 
   void delete_resol(int resol) noexcept {
-    dim.erase(dim.begin() + resol - 1);
+    dimension_list.erase(dimension_list.begin() + resol - 1);
   }
 };
 

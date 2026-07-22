@@ -72,11 +72,10 @@ extern "C" {
     );
 
     // Set Earth radius
-    double default_earth_radius = 6371229.0;
     if (prad && *prad > 0.0) {
       Constants::get_instance().set_earth_radius(*prad);
     } else {
-      Constants::get_instance().set_earth_radius(default_earth_radius);
+      Constants::get_instance().set_earth_radius(ra);
     }
 
     // Initialise resolution-agnostic parallelisation parameters

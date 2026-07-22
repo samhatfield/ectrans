@@ -14,8 +14,7 @@
 // kdlon and kresol are optional and passed as pointers which are null when the corresponding
 // argument was not present in the Fortran call.
 template <typename Real> void setup_trans(int ksmax, int kdgl, int* kdlon, int* kloen, int* kresol) {
-  int ndlon = kdlon ? *kdlon : -1;
-  int resolution_handle = ResolutionDependent::get_instance().init_resol(ksmax, kdgl, ndlon, kloen);
+  int resolution_handle = ResolutionDependent::get_instance().init_resol(ksmax, kdgl, kdlon, kloen);
 
   if (General::get_instance().get_print_level() > 0) {
     std::cout << "Defined resolution " << resolution_handle << std::endl;

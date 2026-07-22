@@ -22,26 +22,24 @@ class Dimensions {
     int num_spec_els_glob2; // Number of complex spectral coefficients * 2
     int num_nh_lats; // Number of latitudes pole-to-equator
     int* num_lons_per_lat; // Number of longitudes on each latitude
+    bool reduced_grid; // True if the grid is reduced, false if it is regular
 
   public:
-    Dimensions(int _trunc, int _num_lats, int _max_num_lons, int* _num_lons_per_lat) {
+    Dimensions(int _trunc, int _num_lats, int* _max_num_lons, int* _num_lons_per_lat) {
       trunc = _trunc;
       num_lats = _num_lats;
 
       if (num_lats <= 0 || num_lats % 2 != 0) ABOR1("Dimensions: num_lats not positive and even");
 
-      if (_max_num_lons > 0) {
-        max_num_lons = _max_num_lons;
+      if (_max_num_lons) {
+        max_num_lons = *_max_num_lons;
       } else {
         max_num_lons = 2 * num_lats;
       }
 
-      num_spec_els_glob = (trunc + 1) * (trunc + 2) / 2;
-      num_spec_els_glob2 = 2 * num_spec_els_glob2;
-      num_nh_lats = (num_lats + 1) / 2;
-
       num_lons_per_lat = new int[num_lats];
       if (_num_lons_per_lat) {
+        reduced_grid = _num_lons_per_lat[0] != _num_lons_per_lat[1];
         max_num_lons = 0;
         for (int i = 0; i < num_lats; ++i) {
           if (_num_lons_per_lat[i] <= 0) {
@@ -53,6 +51,10 @@ class Dimensions {
       } else {
         for (int i = 0; i < num_lats; ++i) num_lons_per_lat[i] = max_num_lons;
       }
+
+      num_spec_els_glob = (trunc + 1) * (trunc + 2) / 2;
+      num_spec_els_glob2 = 2 * num_spec_els_glob;
+      num_nh_lats = (num_lats + 1) / 2;
     }
 
     [[nodiscard]] int get_trunc() const noexcept { return trunc; }
