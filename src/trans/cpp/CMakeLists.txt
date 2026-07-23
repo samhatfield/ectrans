@@ -6,6 +6,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Define C++ common library, which contains all the C++ sources and requires no precision
 # preprocessing
 ecbuild_list_add_pattern( LIST ectrans_cpp_common_src GLOB external_cpp/*.cpp internal/*.cpp QUIET )

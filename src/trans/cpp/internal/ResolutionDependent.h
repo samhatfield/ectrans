@@ -13,9 +13,10 @@
 
 #include "abor1.h"
 #include "Dimensions.h"
+#include "Legendre.h"
 
 // Class for managing resolution-dependent structures
-class ResolutionDependent {
+template <typename Real> class ResolutionDependent {
   private:
     ResolutionDependent() = default;
     ~ResolutionDependent() = default;
@@ -23,7 +24,7 @@ class ResolutionDependent {
 
     // Members
     std::vector<Dimensions> dimension_list;
-    std::vector<Legendre> legendre_list;
+    std::vector<Legendre<Real>> legendre_list;
 
   public:
     static ResolutionDependent& get_instance() {
@@ -51,7 +52,7 @@ class ResolutionDependent {
   }
 
   [[nodiscard]]
-  Legendre& get_legendre_list(int resol) {
+  Legendre<Real>& get_legendre_list(int resol) {
     if (resol <= legendre_list.size()) {
       return legendre_list[resol - 1];
     } else {
@@ -63,14 +64,14 @@ class ResolutionDependent {
     int truncation, int num_latitudes, int* max_lons_per_lat, int* num_lons_per_lat
   ) noexcept {
     dimension_list.push_back(Dimensions(truncation, num_latitudes, max_lons_per_lat, num_lons_per_lat));
-    legendre_list.push_back(Legendre());
-
+    legendre_list.push_back(Legendre<Real>(num_latitudes));
 
     return dimension_list.size();
   }
 
   void delete_resol(int resol) noexcept {
     dimension_list.erase(dimension_list.begin() + resol - 1);
+    legendre_list.erase(legendre_list.begin() + resol - 1);
   }
 };
 

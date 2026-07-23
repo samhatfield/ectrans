@@ -9,25 +9,33 @@
 #ifndef LEGENDRE_H
 #define LEGENDRE_H
 
+#include <vector>
+
+#include "calculate_lats_and_weights.h"
+
 template <typename Real> class Legendre {
   private:
-    Real* mu; // Sine of latitudes
-    Real* weights; // Gaussian weights
-    Real* mu_sq_r; // Cosine squared of latitude
-    Real* mu_sq_r_sqrt_r; // 1 over cosine of latitude
-    Real* epsi; // Epsilon values for the Legendre transform
+    std::vector<double> mu; // Sine of latitudes
+    std::vector<double> weights; // Gaussian weights
+    std::vector<double> mu_sq_r; // Cosine squared of latitude
+    std::vector<double> mu_sq_r_sqrt_r; // 1 over cosine of latitude
+    std::vector<double> epsi; // Epsilon values for the Legendre transform
 
   public:
-    Legendre() {
+    Legendre(int num_latitudes)
+      : mu(num_latitudes),
+        weights(num_latitudes),
+        mu_sq_r(num_latitudes),
+        mu_sq_r_sqrt_r(num_latitudes),
+        epsi(num_latitudes) {
+      calculate_lats_and_weights(mu, weights);
     }
 
-    [[nodiscard]] int get_trunc() const noexcept { return trunc; }
-    [[nodiscard]] int get_num_lats() const noexcept { return num_lats; }
-    [[nodiscard]] int get_max_num_lons() const noexcept { return max_num_lons; }
-    [[nodiscard]] int get_num_spec_els_glob() const noexcept { return num_spec_els_glob; }
-    [[nodiscard]] int get_num_spec_els_glob2() const noexcept { return num_spec_els_glob2; }
-    [[nodiscard]] int get_num_nh_lats() const noexcept { return num_nh_lats; }
-    [[nodiscard]] int* get_num_lons_per_lat() const noexcept { return num_lons_per_lat; }
+    [[nodiscard]] double* get_mu() noexcept { return mu.data(); }
+    [[nodiscard]] double* get_weights() noexcept { return weights.data(); }
+    [[nodiscard]] double* get_mu_sq_r() noexcept { return mu_sq_r.data(); }
+    [[nodiscard]] double* get_mu_sq_r_sqrt_r() noexcept { return mu_sq_r_sqrt_r.data(); }
+    [[nodiscard]] double* get_epsi() noexcept { return epsi.data(); }
 };
 
 #endif  // LEGENDRE_H
