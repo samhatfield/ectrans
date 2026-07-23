@@ -18,6 +18,12 @@ one set of Legendre assets (``get_legendre_assets``):
   arrays with the ``*_dist4py`` routines, move data with ``dist_spec``/
   ``gath_spec``/``dist_grid``/``gath_grid``, and compute global norms with
   ``specnorm4py``/``gpnorm_trans4py``.
+
+  For the 2-D spectral (wave x V-set) decomposition (``nprtrv>1``, i.e.
+  ``KPRTRW < NPROC``) the ``*_vset4py`` variants carry a ``KVSET`` field->V-set map
+  (``trans_inq_vset4py`` reports this task's wave-set/V-set position); and
+  ``mpl_init_comm4py`` binds MPL to a *user* sub-communicator, so ecTrans can run on a
+  compute sub-group when the world is split (e.g. compute vs IO-server ranks).
 """
 
 from __future__ import print_function, absolute_import, unicode_literals, division
@@ -611,6 +617,19 @@ def mpl_init4py():
 
 
 @ctypesFF()
+def mpl_init_comm4py(KCOMM):
+    """Initialise FIAT MPL bound to a *user* communicator (mpi4py ``comm.py2f()``)
+    instead of MPI_COMM_WORLD, via FIAT's LMPLUSERCOMM seam -- every MPL collective,
+    and thus all of ecTrans, is then local to that communicator (e.g. a compute
+    sub-group under an IO-server split). Returns (rank[1-based], size) within KCOMM."""
+    return ([KCOMM],
+            [(np.int64, None, IN),
+             (np.int64, None, OUT),
+             (np.int64, None, OUT)],
+            None)
+
+
+@ctypesFF()
 def mpl_end4py():
     """Finalise FIAT MPL (does not finalise MPI)."""
     return ([], [], None)
@@ -796,6 +815,144 @@ def dir_trans_uv_dist4py(KSPEC2, KGPTOT, KFLD, PGPU, PGPV):
              (_REAL, (KFLD, KSPEC2), OUT),
              (_REAL, (KFLD, KSPEC2), OUT)],
             None)
+
+
+# ---------------------------------------------------------------------------
+# V-set-aware distributed interface for the 2-D spectral decomposition (nprtrv>1).
+# Spectral side is V-set-distributed (KFLDL local fields = this rank's NFLEVL levels);
+# grid side holds all KFLDG global fields (NFLEVG). KVSET*(KFLDG) assigns each global
+# field to its owning V-set; ecTrans does the NFLEVL<->NFLEVG transposition internally.
+# Reduce to the *_dist4py forms at nprtrv==1 (KFLDL==KFLDG, KVSET all 1).
+# ---------------------------------------------------------------------------
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def trans_inq_vset4py(KRESOL):
+    """Inquire the spectral (wave x V-set) processor grid: returns (KPRTRW wave-sets, this
+    task's 1-based wave-set KMYSETW, V-set KMYSETV). nprtrv = NPROC/KPRTRW."""
+    return ([KRESOL],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, OUT),
+             (np.int64, None, OUT),
+             (np.int64, None, OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def dist_spec_vset4py(KSPEC2G, KSPEC2, KFLDG, KFLDL, KFROM, KVSET, PSPECG):
+    """V-set-aware scatter (nprtrv>1): global PSPECG(KFLDG,KSPEC2G) distributed by
+    KVSET(KFLDG) -> this rank's local PSPEC(KFLDL,KSPEC2)."""
+    return ([KSPEC2G, KSPEC2, KFLDG, KFLDL, KFROM, KVSET, PSPECG],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDG, KSPEC2G), IN),
+             (_REAL, (KFLDL, KSPEC2), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def gath_spec_vset4py(KSPEC2G, KSPEC2, KFLDG, KFLDL, KTO, KVSET, PSPEC):
+    """V-set-aware gather (nprtrv>1): this rank's local PSPEC(KFLDL,KSPEC2) -> global
+    PSPECG(KFLDG,KSPEC2G) on KTO, by KVSET(KFLDG)."""
+    return ([KSPEC2G, KSPEC2, KFLDG, KFLDL, KTO, KVSET, PSPEC],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG, KSPEC2G), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def inv_trans_scalar_vset4py(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PSPEC):
+    """V-set-aware inverse scalar transform (nprtrv>1): local spectral PSPEC(KFLDL,KSPEC2),
+    V-set map KVSETSC(KFLDG) -> grid PGP(KFLDG,KGPTOT)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PSPEC],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG, KGPTOT), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def dir_trans_scalar_vset4py(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PGP):
+    """V-set-aware direct scalar transform (nprtrv>1): grid PGP(KFLDG,KGPTOT), V-set map
+    KVSETSC(KFLDG) -> local spectral PSPEC(KFLDL,KSPEC2)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PGP],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDL, KSPEC2), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def inv_trans_uv_vset4py(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PSPVOR, PSPDIV):
+    """V-set-aware inverse UV transform (nprtrv>1): local vor/div (KFLDL,KSPEC2), V-set map
+    KVSETUV(KFLDG) -> u,v grid (KFLDG,KGPTOT each)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PSPVOR, PSPDIV],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG, KGPTOT), OUT),
+             (_REAL, (KFLDG, KGPTOT), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def dir_trans_uv_vset4py(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PGPU, PGPV):
+    """V-set-aware direct UV transform (nprtrv>1): u,v grid (KFLDG,KGPTOT), V-set map
+    KVSETUV(KFLDG) -> local vor/div (KFLDL,KSPEC2 each)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PGPU, PGPV],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDL, KSPEC2), OUT),
+             (_REAL, (KFLDL, KSPEC2), OUT)],
+            None)
+
 
 
 # ---------------------------------------------------------------------------

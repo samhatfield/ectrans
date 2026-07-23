@@ -35,7 +35,7 @@ KLOEN = np.full(NDGL, 2 * NDGL, dtype=np.int64)
 NGPTOTG = int(KLOEN.sum())
 
 # processor grid (N-S split), distributed
-ectrans4py.setup_trans0_4py(size, 1, size, False, 10)
+ectrans4py.setup_trans0_4py(size, 1, size, False, 10, False)
 kresol = ectrans4py.setup_trans_4py(KSMAX, NDGL, NDGL, KLOEN, True, False)
 
 (kgptot, kspec, kspec2, kgptotg, kspec2g, ksmax, knmeng, pmu, pgw) = \
