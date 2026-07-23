@@ -955,6 +955,122 @@ def dir_trans_uv_vset4py(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PGPU, PGPV):
 
 
 
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def inv_trans_scalar_ders_vset4py(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PSPEC):
+    """V-set inverse scalar transform WITH derivatives (nprtrv>1): local spectral
+    PSPEC(KFLDL,KSPEC2), map KVSETSC(KFLDG) -> grid value/N-S/E-W (KFLDG,KGPTOT each)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PSPEC],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG, KGPTOT), OUT),
+             (_REAL, (KFLDG, KGPTOT), OUT),
+             (_REAL, (KFLDG, KGPTOT), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def inv_trans_scalar_vset4py_ad(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PGP):
+    """Adjoint of inv_trans_scalar_vset4py: grid seed PGP(KFLDG,KGPTOT), map KVSETSC(KFLDG)
+    -> local spectral PSPEC(KFLDL,KSPEC2)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PGP],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDL, KSPEC2), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def inv_trans_scalar_ders_vset4py_ad(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PGP, PGPNS, PGPEW):
+    """Adjoint of inv_trans_scalar_ders_vset4py: value/N-S/E-W grid seeds (KFLDG,KGPTOT),
+    map KVSETSC(KFLDG) -> local spectral PSPEC(KFLDL,KSPEC2)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PGP, PGPNS, PGPEW],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDL, KSPEC2), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def dir_trans_scalar_vset4py_ad(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PSPEC):
+    """Adjoint of dir_trans_scalar_vset4py: local spectral seed PSPEC(KFLDL,KSPEC2),
+    map KVSETSC(KFLDG) -> grid PGP(KFLDG,KGPTOT)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETSC, PSPEC],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG, KGPTOT), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def inv_trans_uv_vset4py_ad(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PGPU, PGPV):
+    """Adjoint of inv_trans_uv_vset4py: grid u,v seeds (KFLDG,KGPTOT), map KVSETUV(KFLDG)
+    -> local vor,div (KFLDL,KSPEC2)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PGPU, PGPV],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDG, KGPTOT), IN),
+             (_REAL, (KFLDL, KSPEC2), OUT),
+             (_REAL, (KFLDL, KSPEC2), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def dir_trans_uv_vset4py_ad(KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PSPVOR, PSPDIV):
+    """Adjoint of dir_trans_uv_vset4py: local vor,div seeds (KFLDL,KSPEC2), map KVSETUV(KFLDG)
+    -> grid u,v (KFLDG,KGPTOT)."""
+    return ([KSPEC2, KGPTOT, KFLDL, KFLDG, KVSETUV, PSPVOR, PSPDIV],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG, KGPTOT), OUT),
+             (_REAL, (KFLDG, KGPTOT), OUT)],
+            None)
+
+
 # ---------------------------------------------------------------------------
 # Norms (global, gathered). Spectral input (KFLD, KSPEC2); grid input (KFLD, KGPTOT).
 # ---------------------------------------------------------------------------
@@ -969,6 +1085,23 @@ def specnorm4py(KSPEC2, KFLD, PSPEC):
              (np.int64, None, IN),
              (_REAL, (KFLD, KSPEC2), IN),
              (_REAL, (KFLD,), OUT)],
+            None)
+
+
+@treatReturnCode
+@ctypesFF()
+@addReturnCode
+def specnorm_vset4py(KSPEC2, KFLDG, KFLDL, KVSET, PSPEC):
+    """V-set global spectral L2 norm per GLOBAL field (nprtrv>1): local PSPEC(KFLDL,KSPEC2),
+    map KVSET(KFLDG) -> PNORM(KFLDG)."""
+    return ([KSPEC2, KFLDG, KFLDL, KVSET, PSPEC],
+            [
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, None, IN),
+             (np.int64, (KFLDG,), IN),
+             (_REAL, (KFLDL, KSPEC2), IN),
+             (_REAL, (KFLDG,), OUT)],
             None)
 
 
