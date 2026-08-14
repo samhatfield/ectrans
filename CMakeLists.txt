@@ -117,6 +117,11 @@ ecbuild_add_option( FEATURE CPP
                     DEFAULT OFF
                     DESCRIPTION "Compile C++ version of ectrans" )
 
+# The C++ backend uses Kokkos for its multidimensional arrays (and, in time, for kernel dispatch)
+if( HAVE_CPP )
+  ecbuild_find_package( NAME Kokkos VERSION 4.0 REQUIRED )
+endif()
+
 # Check any backends are enabled
 if( (NOT HAVE_CPU) AND (NOT HAVE_GPU) AND (NOT HAVE_CPP) )
   ecbuild_critical("Please enable one or more of the CPU, GPU, and CPP features")

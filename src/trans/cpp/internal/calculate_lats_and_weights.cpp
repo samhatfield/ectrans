@@ -11,9 +11,13 @@
 #include <vector>
 #include <cmath>
 
-void calculate_lats_and_weights(std::span<double> mu, std::span<double> weights) {
+GaussianQuadrature calculate_lats_and_weights(int num_latitudes) {
   // Calculate Gaussian latitudes (actually their sine) and weights for Gauss-Legendre quadrature
-  int num_latitudes = static_cast<int>(mu.size());
+  GaussianQuadrature quadrature{std::vector<double>(num_latitudes),
+                                std::vector<double>(num_latitudes)};
+  auto& mu = quadrature.mu;
+  auto& weights = quadrature.weights;
+
   int n1 = num_latitudes + 1;
   std::vector<double> legpol_four(n1 * n1);
   double intermediate;
@@ -69,4 +73,6 @@ void calculate_lats_and_weights(std::span<double> mu, std::span<double> weights)
     mu[num_latitudes - 1 - i] = -mu[i];
     weights[num_latitudes - 1 - i] = weights[i];
   }
+
+  return quadrature;
 }

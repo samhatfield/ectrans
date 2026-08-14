@@ -9,9 +9,15 @@
 #ifndef CALCULATE_LATS_AND_WEIGHTS_H
 #define CALCULATE_LATS_AND_WEIGHTS_H
 
-#include <span>
+#include <vector>
+
+// Gaussian latitudes (actually their sine) and weights for Gauss-Legendre quadrature
+struct GaussianQuadrature {
+  std::vector<double> mu; // Sine of latitudes
+  std::vector<double> weights; // Gaussian weights
+};
 
 // Calculate Gaussian latitudes (actually their sine) and weights for Gauss-Legendre quadrature
-void calculate_lats_and_weights(std::span<double> mu, std::span<double> weights);
+[[nodiscard]] GaussianQuadrature calculate_lats_and_weights(int num_latitudes);
 
 #endif // CALCULATE_LATS_AND_WEIGHTS_H

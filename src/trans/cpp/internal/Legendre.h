@@ -12,30 +12,39 @@
 #include <vector>
 #include <iostream>
 #include "calculate_lats_and_weights.h"
+#include "LegendrePolynomialGroup.h"
 
 template <typename Real> class Legendre {
   private:
-    std::vector<double> mu; // Sine of latitudes
-    std::vector<double> weights; // Gaussian weights
+    GaussianQuadrature quadrature; // Sine of latitudes and Gaussian weights
     std::vector<double> mu_sq_r; // Cosine squared of latitude
     std::vector<double> mu_sq_r_sqrt_r; // 1 over cosine of latitude
     std::vector<double> epsi; // Epsilon values for the Legendre transform
+    LegendrePolynomialGroup<Real> legendre_polynomial_group; // Group of Legendre polynomials
 
   public:
     Legendre(int num_latitudes)
-      : mu(num_latitudes),
-        weights(num_latitudes),
+      : quadrature(calculate_lats_and_weights(num_latitudes)),
         mu_sq_r(num_latitudes),
         mu_sq_r_sqrt_r(num_latitudes),
-        epsi(num_latitudes) {
-      calculate_lats_and_weights(mu, weights);
+        epsi(num_latitudes),
+        legendre_polynomial_group(num_latitudes, quadrature.mu) {
+
+      std::cout << "mu, weights:" << std::endl;
+      for (std::size_t i = 0; i < quadrature.mu.size(); ++i) {
+        std::cout << quadrature.mu[i] << " " << quadrature.weights[i] << std::endl;
+      }
+      std::cout << std::endl;
     }
 
-    [[nodiscard]] double* get_mu() noexcept { return mu.data(); }
-    [[nodiscard]] double* get_weights() noexcept { return weights.data(); }
+    [[nodiscard]] double* get_mu() noexcept { return quadrature.mu.data(); }
+    [[nodiscard]] double* get_weights() noexcept { return quadrature.weights.data(); }
     [[nodiscard]] double* get_mu_sq_r() noexcept { return mu_sq_r.data(); }
     [[nodiscard]] double* get_mu_sq_r_sqrt_r() noexcept { return mu_sq_r_sqrt_r.data(); }
     [[nodiscard]] double* get_epsi() noexcept { return epsi.data(); }
+    [[nodiscard]] LegendrePolynomialGroup<Real>& get_legendre_polynomial_group() noexcept {
+      return legendre_polynomial_group;
+    }
 };
 
 #endif  // LEGENDRE_H

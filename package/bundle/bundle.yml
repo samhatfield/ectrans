@@ -25,10 +25,15 @@ projects :
         version : develop
         cmake   : ENABLE_DR_HOOK_NVTX=OFF ENAMBLE_OMP=ON
 
+    - kokkos :
+        git     : https://github.com/kokkos/kokkos
+        version : 4.7.00
+        cmake   : Kokkos_ENABLE_SERIAL=ON Kokkos_ENABLE_OPENMP=ON CMAKE_POSITION_INDEPENDENT_CODE=ON
+
     - ectrans :
         dir     : $PWD
-        require : fiat
-        cmake   : ENABLE_MKL=OFF WITH_FFTW=OFF ENABLE_FFTW=OFF ENABLE_GPU=OFF
+        require : fiat kokkos
+        cmake   : ENABLE_MKL=OFF WITH_FFTW=OFF ENABLE_FFTW=OFF ENABLE_GPU=OFF ENABLE_CPP=ON
 
 options :
 

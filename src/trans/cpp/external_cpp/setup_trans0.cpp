@@ -12,6 +12,7 @@
 #include "General.h"
 #include "Constants.h"
 #include "Distributed.h"
+#include "kokkos_lifecycle.h"
 
 // -------------------------------------------------------------------------------------------------
 // Fortran binding
@@ -50,6 +51,10 @@ extern "C" {
     if (kprintlev) nprintlev = *kprintlev;
 
     if (nprintlev > 0) std::cout << "Entering routine setup_trans0" << std::endl;
+
+    // Bring up the Kokkos runtime before anything that might allocate a Kokkos::View. The matching
+    // finalisation happens in trans_end.
+    initialise_kokkos(nprintlev > 0);
 
     if (kmax_resol) nmax_resol = *kmax_resol;
     if (kpromatr) {
