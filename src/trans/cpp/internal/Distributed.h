@@ -46,8 +46,8 @@ class Distributed {
       return *instance;
     }
 
-  Distributed(const Distributed&) = delete("Copy construction disabled");
-  Distributed& operator=(const Distributed&) = delete("Copy assignment disabled");
+  Distributed(const Distributed&) = delete;
+  Distributed& operator=(const Distributed&) = delete;
 
   static void destroy() {
     delete instance;

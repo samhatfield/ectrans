@@ -27,8 +27,8 @@ class Constants {
       return *instance;
     }
 
-  Constants(const Constants&) = delete("Copy construction disabled");
-  Constants& operator=(const Constants&) = delete("Copy assignment disabled");
+  Constants(const Constants&) = delete;
+  Constants& operator=(const Constants&) = delete;
 
   static void destroy() {
     delete instance;

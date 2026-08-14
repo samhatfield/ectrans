@@ -36,8 +36,8 @@ class General {
       return *instance;
     }
 
-  General(const General&) = delete("Copy construction disabled");
-  General& operator=(const General&) = delete("Copy assignment disabled");
+  General(const General&) = delete;
+  General& operator=(const General&) = delete;
 
   static void destroy() {
     delete instance;

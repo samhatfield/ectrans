@@ -34,8 +34,8 @@ template <typename Real> class ResolutionDependent {
       return *instance;
     }
 
-  ResolutionDependent(const ResolutionDependent&) = delete("Copy construction disabled");
-  ResolutionDependent& operator=(const ResolutionDependent&) = delete("Copy assignment disabled");
+  ResolutionDependent(const ResolutionDependent&) = delete;
+  ResolutionDependent& operator=(const ResolutionDependent&) = delete;
 
   static void destroy() {
     delete instance;
