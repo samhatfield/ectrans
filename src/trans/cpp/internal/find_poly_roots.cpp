@@ -8,38 +8,47 @@
 
 #include "calculate_lats_and_weights.h"
 #include "find_poly_roots.h"
+#include <limits>
+#include <cmath>
 
 void find_poly_roots(
     std::span<double> legpol_four, double* lat, double* weight, int num_latitudes, int* iter, 
     double* mod
 ) {
 
-  int iter_max = 20;
+  static constexpr int iter_max = 20;
   double x = *lat;
   int odd = num_latitudes % 2;
 
-  for (int i = 0; i <= iter_max; ++i) {
-    *iter = i;
+  static constexpr double eps = std::numeric_limits<double>::epsilon();
 
-    dlk = 0.0;
+  for (int i = 1; i <= iter_max + 1; ++i) {
+    double dlldn = 0.0;
+    int k = 1;
+    if (abs(*mod) <= eps * 1000.0) {
+      // Last pass
+      for (int j = 2 - odd; j <= num_latitudes; j += 2) {
+        // Normalised derivative
+        dlldn -= legpol_four[k] * (double)j * sin((double)j * (*lat));
+        k++;
+      }
+      *weight = (double)(2 * num_latitudes + 1) / (dlldn * dlldn);
+      return;
+    }
+
+    double dlk = 0.0;
     if (odd == 0) dlk = 0.5 * legpol_four[0];
-    dlxn = 0.0;
-    dlldn = 0.0;
-    k = 1;
 
-    for (int n = 2 - odd; n <= num_latitudes; n += 2) {
-      dlk += fn[k] * cos((double)n * dlx);
-      dlldn -= fn[k] * (double)n * sin((double)n * x);
+    for (int j = 2 - odd; j <= num_latitudes; j += 2) {
+      // Normalised ordinary Legendre polynomial == \overbar{P_n}^0
+      dlk += legpol_four[k] * cos((double)j * (*lat));
+      // Normalised derivative == d/d\theta(\overbar{P_n}^0)
+      dlldn -= legpol_four[k] * (double)j * sin((double)j * (*lat));
       k++;
     }
-    dlmod = -dlk / dlldn;
-    dlxn = x + dlmod;
-    *mod = dlmod;
 
-    x = 
+    // Newton method
+    *mod = -dlk / dlldn;
+    *lat += *mod;
   }
-
-  *lat = 
-
-
 }

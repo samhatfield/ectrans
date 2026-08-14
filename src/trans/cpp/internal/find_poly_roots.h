@@ -13,8 +13,8 @@
 
 // 
 void find_poly_roots(
-    std::span<double> legpol_four, std::span<double> lats, std::span<double> weights,
-    int num_latitudes, int* iter, double* mod
+    std::span<double> legpol_four, double* lat, double* weight, int num_latitudes, int* iter,
+    double* mod
 );
 
 #endif // FIND_POLY_ROOTS_H

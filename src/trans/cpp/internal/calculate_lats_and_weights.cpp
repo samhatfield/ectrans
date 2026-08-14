@@ -7,6 +7,7 @@
 // nor does it submit to any jurisdiction.
 
 #include "calculate_lats_and_weights.h"
+#include "find_poly_roots.h"
 #include <vector>
 #include <cmath>
 
@@ -56,11 +57,16 @@ void calculate_lats_and_weights(std::span<double> mu, std::span<double> weights)
   // Refine
   int iter;
   double mod;
-  for (int i = num_latitudes / 2; i >= 1; --i) {
+  for (int i = 0; i < num_latitudes / 2; ++i) {
     find_poly_roots(fn, &lats[i], &weights[i], num_latitudes, &iter, &mod);
   }
 
   for (int i = 0; i < num_latitudes / 2; ++i) {
     mu[i] = cos(lats[i]);
+  }
+
+  for (int i = 0; i < num_latitudes / 2; ++i) {
+    mu[num_latitudes - 1 - i] = -mu[i];
+    weights[num_latitudes - 1 - i] = weights[i];
   }
 }
