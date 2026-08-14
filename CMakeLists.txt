@@ -117,8 +117,14 @@ ecbuild_add_option( FEATURE CPP
                     DEFAULT OFF
                     DESCRIPTION "Compile C++ version of ectrans" )
 
-# The C++ backend uses Kokkos for its multidimensional arrays (and, in time, for kernel dispatch)
-if( HAVE_CPP )
+# The C++ backend uses Kokkos for its multidimensional arrays (and, in time, for kernel dispatch).
+#
+# Kokkos may either be a sibling project in a bundle or an external installation. In a bundle it is
+# added with add_subdirectory before ectrans, so the Kokkos::kokkos alias already exists and must be
+# used as-is: Kokkos only writes its build-tree KokkosTargets.cmake during CMake's generate phase, so a
+# find_package here would fail trying to include a file that does not exist yet. The version is pinned
+# by the bundle in that case, so it is only checked when resolving an external installation.
+if( HAVE_CPP AND NOT TARGET Kokkos::kokkos )
   ecbuild_find_package( NAME Kokkos VERSION 4.0 REQUIRED )
 endif()
 
