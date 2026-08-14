@@ -9,6 +9,8 @@
 #ifndef DISTRIBUTED_H
 #define DISTRIBUTED_H
 
+#include <iostream>
+
 #include "abor1.h"
 #include "General.h"
 #include "set_mapping.h"

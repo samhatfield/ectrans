@@ -10,7 +10,7 @@
 #define LEGENDRE_H
 
 #include <vector>
-
+#include <iostream>
 #include "calculate_lats_and_weights.h"
 
 template <typename Real> class Legendre {
