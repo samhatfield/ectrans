@@ -6,8 +6,8 @@
 // granted to it by virtue of its status as an intergovernmental organisation
 // nor does it submit to any jurisdiction.
 
-#ifndef DISTRIBUTED_H
-#define DISTRIBUTED_H
+#ifndef PARALLEL_H
+#define PARALLEL_H
 
 #include <iostream>
 
@@ -16,11 +16,11 @@
 #include "set_mapping.h"
 
 // Class for storing parallel configuration parameters
-class Distributed {
+class Parallel {
   private:
-    Distributed() = default;
-    ~Distributed() = default;
-    inline static Distributed* instance = nullptr;
+    Parallel() = default;
+    ~Parallel() = default;
+    inline static Parallel* instance = nullptr;
 
     // Members
     int nproc;
@@ -41,15 +41,15 @@ class Distributed {
     int* nprcids;
 
   public:
-    static Distributed& get_instance() {
+    static Parallel& get_instance() {
       if (!instance) {
-        instance = new Distributed();
+        instance = new Parallel();
       }
       return *instance;
     }
 
-  Distributed(const Distributed&) = delete;
-  Distributed& operator=(const Distributed&) = delete;
+  Parallel(const Parallel&) = delete;
+  Parallel& operator=(const Parallel&) = delete;
 
   static void destroy() {
     delete instance;
@@ -81,7 +81,7 @@ class Distributed {
     nprtrns = nprtrw;
 
     if (nproc % nprtrw != 0 || nprtrw > nproc) {
-      ABOR1("Distributed.init: nproc inconsistent with nprtrw");
+      ABOR1("Parallel.init: nproc inconsistent with nprtrw");
     }
 
     nprtrv = nproc / nprtrw;
@@ -102,7 +102,7 @@ class Distributed {
     }
 
     if (myproc > nproc) {
-      ABOR1("Distributed.init: myproc > nproc");
+      ABOR1("Parallel.init: myproc > nproc");
     }
 
     leq_regions = _leq_regions;
@@ -135,4 +135,4 @@ class Distributed {
   }
 };
 
-#endif // DISTRIBUTED_H
+#endif // PARALLEL_H

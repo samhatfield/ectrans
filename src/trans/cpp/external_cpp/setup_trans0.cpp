@@ -11,7 +11,7 @@
 #include "abor1.h"
 #include "General.h"
 #include "Constants.h"
-#include "Distributed.h"
+#include "Parallel.h"
 #include "kokkos_lifecycle.h"
 
 // -------------------------------------------------------------------------------------------------
@@ -84,11 +84,11 @@ extern "C" {
     }
 
     // Initialise resolution-agnostic parallelisation parameters
-    Distributed::get_instance().init(nprgpns, nprgpew, nprtrw, leq_regions);
+    Parallel::get_instance().init(nprgpns, nprgpew, nprtrw, leq_regions);
 
-    if (k_regions_ns) *k_regions_ns = Distributed::get_instance().get_n_regions_ns();
-    if (k_regions_ew) *k_regions_ew = Distributed::get_instance().get_n_regions_ew();
-    if (k_regions) k_regions = Distributed::get_instance().get_n_regions();
+    if (k_regions_ns) *k_regions_ns = Parallel::get_instance().get_n_regions_ns();
+    if (k_regions_ew) *k_regions_ew = Parallel::get_instance().get_n_regions_ew();
+    if (k_regions) k_regions = Parallel::get_instance().get_n_regions();
   }
 }
 
