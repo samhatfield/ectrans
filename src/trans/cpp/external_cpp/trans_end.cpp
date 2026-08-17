@@ -35,7 +35,6 @@ extern "C" {
     // singleton that was never instantiated is a no-op.
     ResolutionDependent<float>::destroy();
     ResolutionDependent<double>::destroy();
-    Distributed::destroy();
     General::destroy();
     Constants::destroy();
 

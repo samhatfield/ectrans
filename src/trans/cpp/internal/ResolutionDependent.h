@@ -13,7 +13,9 @@
 
 #include "abor1.h"
 #include "Dimensions.h"
+#include "Distributed.h"
 #include "Legendre.h"
+#include "Parallel.h"
 
 // Class for managing resolution-dependent structures
 template <typename Real> class ResolutionDependent {
@@ -24,6 +26,7 @@ template <typename Real> class ResolutionDependent {
 
     // Members
     std::vector<Dimensions> dimension_list;
+    std::vector<Distributed> distributed_list;
     std::vector<Legendre<Real>> legendre_list;
 
   public:
@@ -52,6 +55,15 @@ template <typename Real> class ResolutionDependent {
   }
 
   [[nodiscard]]
+  Distributed& get_distributed_list(int resol) {
+    if (resol <= distributed_list.size()) {
+      return distributed_list[resol - 1];
+    } else {
+      ABOR1("ResolutionDependent.get_distributed: resol requested does not exist");
+    }
+  }
+
+  [[nodiscard]]
   Legendre<Real>& get_legendre_list(int resol) {
     if (resol <= legendre_list.size()) {
       return legendre_list[resol - 1];
@@ -63,14 +75,27 @@ template <typename Real> class ResolutionDependent {
   int init_resol(
     int truncation, int num_latitudes, int* max_lons_per_lat, int* num_lons_per_lat
   ) noexcept {
-    dimension_list.push_back(Dimensions(truncation, num_latitudes, max_lons_per_lat, num_lons_per_lat));
-    legendre_list.push_back(Legendre<Real>(num_latitudes));
+    // Dimensions (truncation, number of latitudes etc.)
+    dimension_list.push_back(Dimensions(
+      truncation, num_latitudes, max_lons_per_lat, num_lons_per_lat
+    ));
 
+    // Resolution-dependent distribution parameters (number of zonal wavenumbers per W set etc.)
+    distributed_list.push_back(Distributed(truncation));
+
+    // Legendre transform-related arrays (Gaussian weights, Legendre polynomials etc.)
+    legendre_list.push_back(Legendre<Real>(
+      num_latitudes, truncation, distributed_list.back().get_my_ms(),
+      Parallel::get_instance().get_nprtrv(), dimension_list.back().get_num_latitudes_m()
+    ));
+
+    // Return index integer handle (like KRESOL in Fortran, so it starts from 1)
     return dimension_list.size();
   }
 
   void delete_resol(int resol) noexcept {
     dimension_list.erase(dimension_list.begin() + resol - 1);
+    distributed_list.erase(distributed_list.begin() + resol - 1);
     legendre_list.erase(legendre_list.begin() + resol - 1);
   }
 };

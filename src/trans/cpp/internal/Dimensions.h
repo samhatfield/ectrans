@@ -10,7 +10,8 @@
 #define DIMENSIONS_H
 
 #include <algorithm>
-
+#include <vector>
+#include <span>
 #include "abor1.h"
 
 class Dimensions {
@@ -23,6 +24,7 @@ class Dimensions {
     int num_nh_lats; // Number of latitudes pole-to-equator
     int* num_lons_per_lat; // Number of longitudes on each latitude
     bool reduced_grid; // True if the grid is reduced, false if it is regular
+    std::vector<int> num_latitudes_m; // Number of latitudes for each zonal wavenumber
 
   public:
     Dimensions(int _trunc, int _num_lats, int* _max_num_lons, int* _num_lons_per_lat) {
@@ -54,7 +56,14 @@ class Dimensions {
 
       num_spec_els_glob = (trunc + 1) * (trunc + 2) / 2;
       num_spec_els_glob2 = 2 * num_spec_els_glob;
-      num_nh_lats = (num_lats + 1) / 2;
+      num_nh_lats = num_lats / 2;
+
+      // Compute number of latitudes considered for the Legendre transform at each zonal wavenumber
+      num_latitudes_m.reserve(trunc + 1);
+      for (int m = 0; m <= trunc; ++m) {
+        // TODO: Make this actually dependent on latitude
+        num_latitudes_m.push_back(num_lats);
+      }
     }
 
     [[nodiscard]] int get_trunc() const noexcept { return trunc; }
@@ -64,6 +73,7 @@ class Dimensions {
     [[nodiscard]] int get_num_spec_els_glob2() const noexcept { return num_spec_els_glob2; }
     [[nodiscard]] int get_num_nh_lats() const noexcept { return num_nh_lats; }
     [[nodiscard]] int* get_num_lons_per_lat() const noexcept { return num_lons_per_lat; }
+    [[nodiscard]] std::span<const int> get_num_latitudes_m() const noexcept { return num_latitudes_m; }
 };
 
 #endif // DIMENSIONS_H

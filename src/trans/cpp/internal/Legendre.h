@@ -23,18 +23,14 @@ template <typename Real> class Legendre {
     LegendrePolynomialGroup<Real> legendre_polynomial_group; // Group of Legendre polynomials
 
   public:
-    Legendre(int num_latitudes)
-      : quadrature(calculate_lats_and_weights(num_latitudes)),
+    Legendre(
+      int num_latitudes, int truncation, std::span<const int> my_ms, int nprtrv,
+      std::span<const int> num_latitudes_m
+    ) : quadrature(calculate_lats_and_weights(num_latitudes)),
         mu_sq_r(num_latitudes),
         mu_sq_r_sqrt_r(num_latitudes),
         epsi(num_latitudes),
-        legendre_polynomial_group(num_latitudes, quadrature.mu) {
-
-      std::cout << "mu, weights:" << std::endl;
-      for (std::size_t i = 0; i < quadrature.mu.size(); ++i) {
-        std::cout << quadrature.mu[i] << " " << quadrature.weights[i] << std::endl;
-      }
-      std::cout << std::endl;
+        legendre_polynomial_group(my_ms, nprtrv, truncation, num_latitudes, num_latitudes_m) {
     }
 
     [[nodiscard]] double* get_mu() noexcept { return quadrature.mu.data(); }
