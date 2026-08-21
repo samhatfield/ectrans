@@ -11,18 +11,33 @@
 
 #include <vector>
 #include <span>
+#include "Parallel.h"
+#include "setup_spectral_distribution.h"
 
 // Class for storing resolution-specific distribution parameters
 class Distributed {
   private:
+    std::vector<int> moffset; // starting index of each zonal wavenumber in spectral arrays
+    int spolegl; // TODO: not sure what this is
+    std::vector<int> mtask; // which W-set owns each zonal wavenumber
+    std::vector<int> num_ms; // how many zonal wavenumbers each W-set owns
+    int num_my_ms; // how many zonal wavenumbers my W-set owns
+    int nspec; // how many complex spectral coefficients this task owns
+    int nspec2; // nspec * 2
+    int nspec2max; // maximum number of complex spectral coefficients on any W-set * 2
+    std::vector<int> wsetoffset; // starting index of each W-set in global spectral arrays
     std::vector<int> my_ms; // all of the zonal wavenumbers my W set is responsible for
 
   public:
     Distributed(int truncation) noexcept {
-      my_ms.reserve(truncation + 1);
-      for (int m = 0; m < truncation + 1; ++m) {
-        my_ms.push_back(m);
-      }
+      std::vector<int> my_ms_all_ms(truncation + 1); // extra large version of my_ms
+      int mysetw = Parallel::get_instance().get_mysetw();
+      setup_spectral_distribution(
+        truncation, Parallel::get_instance().get_nprtrw(), mysetw,
+        my_ms_all_ms
+      );
+      num_my_ms = num_ms[mysetw - 1];
+      my_ms.assign(my_ms_all_ms.begin(), my_ms_all_ms.begin() + num_my_ms + 1);
     }
 
     [[nodiscard]] int get_nump() const noexcept { return my_ms.size(); }
