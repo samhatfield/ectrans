@@ -14,6 +14,7 @@
 #include "abor1.h"
 #include "General.h"
 #include "set_mapping.h"
+#include "mpl.h"
 
 // Class for storing parallel configuration parameters
 class Parallel {
@@ -96,7 +97,11 @@ class Parallel {
 
     if (nproc > 1) {
       // Not supported yet
-      ABOR1("Not implemented");
+      int iproc = mpl_nproc();
+      if (iproc != nproc) {
+        ABOR1("Parallel.init: nproc inconsistent with mpl_nproc");
+      }
+      myproc = mpl_myrank();
     } else {
       myproc = 1;
     }

@@ -21,8 +21,8 @@ projects :
         bundle  : false
 
     - fiat :
-        git     : https://github.com/ecmwf-ifs/fiat 
-        version : develop
+        git     : /Users/samhatfield/Work/ECMWF/fiat
+        version : feat/mpl_c_binding
         cmake   : ENABLE_DR_HOOK_NVTX=OFF ENAMBLE_OMP=ON
 
     - kokkos :
