@@ -31,13 +31,14 @@ class Distributed {
   public:
     Distributed(int truncation) noexcept {
       std::vector<int> my_ms_all_ms(truncation + 1); // extra large version of my_ms
+      num_ms.reserve(Parallel::get_instance().get_nprtrw());
       int mysetw = Parallel::get_instance().get_mysetw();
       setup_spectral_distribution(
         truncation, Parallel::get_instance().get_nprtrw(), mysetw,
-        my_ms_all_ms
+        num_ms, my_ms_all_ms
       );
       num_my_ms = num_ms[mysetw - 1];
-      my_ms.assign(my_ms_all_ms.begin(), my_ms_all_ms.begin() + num_my_ms + 1);
+      my_ms.assign(my_ms_all_ms.begin(), my_ms_all_ms.begin() + num_my_ms);
     }
 
     [[nodiscard]] int get_nump() const noexcept { return my_ms.size(); }
